@@ -7,11 +7,15 @@
 #include <stdio.h>
 
 #include "pico/stdlib.h"
+#include "pico/multicore.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
-#include "hub75.pio.h"
 
-#include "mountains_128x64_rgb565.h"
+#include "hub75.pio.h"
+#include "usb_driver.h"
+
+#include "tusb.h"
+#include "pixels.h"
 
 #define DATA_BASE_PIN 0
 #define DATA_N_PINS 6
@@ -23,27 +27,53 @@
 
 #define WIDTH 128
 #define HEIGHT 32
-#define SCROLLHEIGHT 32
-#define ANIMTIMER 16
+#define ANIMTIMER 6
 
-static inline uint32_t gamma_correct_565_888(uint16_t pix)
+#define LED_PIN PICO_DEFAULT_LED_PIN
+
+void render(int frameCount)
 {
-    uint32_t r_gamma = pix & 0xf800u;
-    r_gamma *= r_gamma;
-    uint32_t g_gamma = pix & 0x07e0u;
-    g_gamma *= g_gamma;
-    uint32_t b_gamma = pix & 0x001fu;
-    b_gamma *= b_gamma;
-    return (b_gamma >> 2 << 16) | (g_gamma >> 14 << 8) | (r_gamma >> 24 << 0);
+    static int x = 0;
+    static int y = 0;
+    static int xvel = 1;
+    static int yvel = 2;
+
+    x += xvel;
+    if (x >= WIDTH)
+    {
+        xvel *= -1;
+        x += xvel;
+    }
+    else if (x < 0)
+    {
+        xvel *= -1;
+        x += xvel;
+    }
+    y += yvel;
+    if (y >= HEIGHT)
+    {
+        yvel *= -1;
+        y += yvel;
+    }
+    else if (y < 0)
+    {
+        yvel *= -1;
+        y += yvel;
+    }
+
+    set_pixel(x, y, rgb(x * 2, y * 4, 44));
 }
 
-int main()
+void core1_main()
 {
-    stdio_init_all();
-
     PIO pio = pio0;
     uint sm_data = 0;
     uint sm_row = 1;
+    uint led_state = 0;
+
+    // // Use the onboard LED as heartbeat indicator (and frame rate indicator)
+    // gpio_init(LED_PIN);
+    // gpio_set_dir(LED_PIN, GPIO_OUT);
 
     uint data_prog_offs = pio_add_program(pio, &hub75_data_rgb888_program);
     uint row_prog_offs = pio_add_program(pio, &hub75_row_program);
@@ -51,7 +81,7 @@ int main()
     hub75_row_program_init(pio, sm_row, row_prog_offs, ROWSEL_BASE_PIN, ROWSEL_N_PINS, STROBE_PIN);
 
     static uint32_t gc_row[2][WIDTH];
-    const uint16_t *img = (const uint16_t *)mountains_128x64;
+    int frameCount = 0;
     int scrollOffset = 0;
     uint scrollDelay = ANIMTIMER;
     int scrollDir = 1;
@@ -61,30 +91,26 @@ int main()
         if (--scrollDelay == 0)
         {
             scrollDelay = ANIMTIMER;
-            scrollOffset += scrollDir;
-            if (scrollOffset >= SCROLLHEIGHT)
-            {
-                scrollDir = -1;
-                scrollOffset = SCROLLHEIGHT - 1;
-            }
-            if (scrollOffset < 0)
-            {
-                scrollDir = 1;
-                scrollOffset = 0;
-            }
+
+            render(frameCount++);
         }
         for (int rowsel = 0; rowsel < (1 << ROWSEL_N_PINS); ++rowsel)
         {
             for (int x = 0; x < WIDTH; ++x)
             {
-                gc_row[0][x] = gamma_correct_565_888(img[(rowsel + scrollOffset) * WIDTH + x]);
-                gc_row[1][x] = gamma_correct_565_888(img[((1u << ROWSEL_N_PINS) + (rowsel + scrollOffset)) * WIDTH + x]);
+                // Add two more rows here if doing parallell rendering.
+                int row0p = ((rowsel * WIDTH + x) * 3);
+                int row1p = ((((1u << ROWSEL_N_PINS) + rowsel) * WIDTH + x) * 3);
+                uint8_t *buf = get_buffer();
+                gc_row[0][x] = rgb(buf[row0p], buf[row0p + 1], buf[row0p + 2]);
+                gc_row[1][x] = rgb(buf[row1p], buf[row1p + 1], buf[row1p + 2]);
             }
             for (int bit = 0; bit < 8; ++bit)
             {
                 hub75_data_rgb888_set_shift(pio, sm_data, data_prog_offs, bit);
                 for (int x = 0; x < WIDTH; ++x)
                 {
+                    // Two more rows if parallell
                     pio_sm_put_blocking(pio, sm_data, gc_row[0][x]);
                     pio_sm_put_blocking(pio, sm_data, gc_row[1][x]);
                 }
@@ -101,4 +127,21 @@ int main()
             }
         }
     }
+}
+
+// Forward declare. Yeah, this is cheating.
+int webusb_main(void);
+
+int main()
+{
+    // stdio_init_all();
+    // setup_usb_device(buf1);
+
+    multicore_launch_core1(core1_main);
+
+    webusb_main();
+
+    // Core 0 will be USB listener only
+    while (1)
+        tight_loop_contents();
 }
