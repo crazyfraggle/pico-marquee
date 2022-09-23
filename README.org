@@ -1,15 +1,43 @@
 #+TITLE: Pico Marquee
+#+TODO: TODO(t) STRT(s@/!) | DONE(d!)
 
-Code for running my Raspberry Pi Pico driven 4k Led Marquee 
+Code for running my Raspberry Pi Pico driven 4k Led Marquee. Literal 4k display consisting of 128x32 pixels.
 
-* LED driver
+* Equipment
++ 2x 64x32 pixel LED matrix
+  - Powered by 10A 5V PSU
++ Raspberry Pi Pico
 
-Use the PIO to drive the LEDs. 
-The pico-examples repo has a driver for this that can be adapted for the purpose.
+* Developer environment
 
-Drive the LEDs as two parallell displays to optimize output.
-We can use 32bit integer flow through the PIO to drive 4 lines at the time, instead of 2.
+Developing in a Raspberry Pi 400. Initially tried using WSL, but the hassle of USB connection pass through was not ideal when repeatedly connecting and disconnecting the Pico.
 
-* Frame transfer
+** Raspberry Pi 400 impressions
 
-??
+When developing using VSCode and Chromium-browser, the machine quickly get sluggish, likely due to low memory.
+
+* Source code layout
+
+** LED driver
+
+I'm using the Picos built in Programmable IO (PIO) to drive the LEDs. 
+The pico-examples project `pio/hub75` has been very slightly adjusted for this setup.
+
+We have the option to drive the LEDs coupled in series as a single 128x32 display, or we could optimize by driving them as two 64x32 displays in parallell.
+The Pico has enough GPIO pins for either option. Sticking with the single display solution first, as it means the example code can be used directly.
+
+The LED driver consists of two components, the PIO part that drive the actual IO pins, and the FIFO filling code that feeds it.
+
+The code for pushing the pixels runs as a separate thread on `core1` in order to avoid rendering hickups when communicating over USB. This will also allow is proper double buffering with more advanced render code on `core0`.
+
+** Frame transfer
+
+To transfer fill frames from the computer, the project has been set up to use WebUSB. This will allow us to generate pixels in Javascript on the browser and push to the display.
+
+*** TODO Improve frame transfer performance
+
+USB transfer seems to be limited to 64 bytes per packet? Force pushing 4k pixels = 12k bytes in such small chunks results in a transfer rate of approx 2?fps. This means pure pixel transfer is mostly viable only for still image use.
+
+*** TODO On board demos
+
+We can control the board over USB to perform various tasks, such as rebooting the device into BOOTSEL mode. We can leverage this to add on board programs to render to the display too, and allow switching using the WebUSB interface.
