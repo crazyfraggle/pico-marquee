@@ -12,10 +12,10 @@
 #include "hardware/pio.h"
 
 #include "hub75.pio.h"
-#include "usb_driver.h"
 
 #include "tusb.h"
 #include "pixels.h"
+#include "demos.h"
 
 #define DATA_BASE_PIN 0
 #define DATA_N_PINS 6
@@ -31,45 +31,11 @@
 
 #define LED_PIN PICO_DEFAULT_LED_PIN
 
-void render(int frameCount)
-{
-    static int x = 0;
-    static int y = 0;
-    static int xvel = 1;
-    static int yvel = 2;
-
-    x += xvel;
-    if (x >= WIDTH)
-    {
-        xvel *= -1;
-        x += xvel;
-    }
-    else if (x < 0)
-    {
-        xvel *= -1;
-        x += xvel;
-    }
-    y += yvel;
-    if (y >= HEIGHT)
-    {
-        yvel *= -1;
-        y += yvel;
-    }
-    else if (y < 0)
-    {
-        yvel *= -1;
-        y += yvel;
-    }
-
-    set_pixel(x, y, rgb(x * 2, y * 4, 44));
-}
-
 void core1_main()
 {
     PIO pio = pio0;
     uint sm_data = 0;
     uint sm_row = 1;
-    uint led_state = 0;
 
     // // Use the onboard LED as heartbeat indicator (and frame rate indicator)
     // gpio_init(LED_PIN);
@@ -81,29 +47,19 @@ void core1_main()
     hub75_row_program_init(pio, sm_row, row_prog_offs, ROWSEL_BASE_PIN, ROWSEL_N_PINS, STROBE_PIN);
 
     static uint32_t gc_row[2][WIDTH];
-    int frameCount = 0;
-    int scrollOffset = 0;
-    uint scrollDelay = ANIMTIMER;
-    int scrollDir = 1;
 
     while (1)
     {
-        if (--scrollDelay == 0)
-        {
-            scrollDelay = ANIMTIMER;
-
-            render(frameCount++);
-        }
         for (int rowsel = 0; rowsel < (1 << ROWSEL_N_PINS); ++rowsel)
         {
             for (int x = 0; x < WIDTH; ++x)
             {
                 // Add two more rows here if doing parallell rendering.
-                int row0p = ((rowsel * WIDTH + x) * 3);
-                int row1p = ((((1u << ROWSEL_N_PINS) + rowsel) * WIDTH + x) * 3);
-                uint8_t *buf = get_buffer();
-                gc_row[0][x] = rgb(buf[row0p], buf[row0p + 1], buf[row0p + 2]);
-                gc_row[1][x] = rgb(buf[row1p], buf[row1p + 1], buf[row1p + 2]);
+                uint8_t *buf = get_display_buffer();
+                int y1 = rowsel;
+                int y2 = ((1u << ROWSEL_N_PINS) + rowsel);
+                gc_row[0][x] = rgb(PIXEL_RED(buf, x, y1), PIXEL_GRN(buf, x, y1), PIXEL_BLU(buf, x, y1));
+                gc_row[1][x] = rgb(PIXEL_RED(buf, x, y2), PIXEL_GRN(buf, x, y2), PIXEL_BLU(buf, x, y2));
             }
             for (int bit = 0; bit < 8; ++bit)
             {

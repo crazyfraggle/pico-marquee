@@ -58,6 +58,7 @@
 #include "usb_descriptors.h"
 
 #include "pixels.h"
+#include "demos.h"
 
 #define LED_PIN PICO_DEFAULT_LED_PIN
 
@@ -97,6 +98,7 @@ static bool web_serial_connected = false;
 void led_blinking_task(void);
 void cdc_task(void);
 void webserial_task(void);
+void render_task(void);
 
 /*------------- MAIN -------------*/
 int webusb_main(void)
@@ -110,6 +112,7 @@ int webusb_main(void)
     cdc_task();
     webserial_task();
     led_blinking_task();
+    render_task();
   }
 
   return 0;
@@ -140,10 +143,28 @@ void echo_all(uint8_t buf[], uint32_t count)
 
 void handle_input_buffer(uint8_t buf[], uint32_t count)
 {
+  if (demo_keyboard_handler(buf[0]))
+  {
+    echo_all("Demokey\r\n", 9);
+
+    return;
+  }
+
   switch (buf[0])
   {
   case 0x42: // "B" - Jump to bootsel
+    echo_all("Rebooting to BOOTSEL\r\n", 23);
     reset_usb_boot(0, 0);
+    break;
+
+  case 0x46: // "F" - Fire demo
+    select_demo(1);
+    echo_all("Enabling Fire Demo\r\n", 21);
+    break;
+
+  case 'S': // "S" - Snek game
+    select_demo(2);
+    echo_all("Enabling Snek Game\r\n", 21);
     break;
 
   case 0x50: // "P" - Pixel dump. Dumps a row of pixels.
@@ -153,8 +174,8 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
       uint8_t y = buf[2];
       uint8_t n = buf[3]; // Number of pixels (3 bytes each)
 
-      uint8_t *pbuf = get_buffer();
-      uint8_t *ptarget = &pbuf[(x + y * WIDTH) * 3];
+      uint8_t *pbuf = get_render_buffer();
+      uint8_t *ptarget = &PIXEL_RED(pbuf, x, y); // &pbuf[(x + y * WIDTH) * 3];
       memcpy(ptarget, &buf[4], n * 3);
 
       break;
@@ -281,9 +302,6 @@ void webserial_task(void)
       uint32_t count = tud_vendor_read(buf, sizeof(buf));
 
       handle_input_buffer(buf, count);
-
-      // echo back to both web serial and cdc
-      // echo_all(buf, count);
     }
   }
 }
@@ -302,13 +320,7 @@ void cdc_task(void)
 
       uint32_t count = tud_cdc_read(buf, sizeof(buf));
 
-      if (buf[0] == 'B')
-      {
-        reset_usb_boot(0, 0);
-      }
-
-      // echo back to both web serial and cdc
-      echo_all(buf, count);
+      handle_input_buffer(buf, count);
     }
   }
 }
@@ -354,4 +366,59 @@ void led_blinking_task(void)
   gpio_put(LED_PIN, led_state);
 
   led_state ^= 1; // toggle
+}
+
+//--------------------------------------------------------------------+
+// RENDER TASK
+//--------------------------------------------------------------------+
+#define FPS 1000 / 50
+void render(int frameCount)
+{
+  // Demo code is active and rendered.
+  if (render_demo())
+    return;
+  // render_demo();
+  static int x = 0;
+  static int y = 0;
+  static int xvel = 1;
+  static int yvel = 2;
+
+  x += xvel;
+  if (x >= WIDTH)
+  {
+    xvel *= -1;
+    x += xvel;
+  }
+  else if (x < 0)
+  {
+    xvel *= -1;
+    x += xvel;
+  }
+  y += yvel;
+  if (y >= HEIGHT)
+  {
+    yvel *= -1;
+    y += yvel;
+  }
+  else if (y < 0)
+  {
+    yvel *= -1;
+    y += yvel;
+  }
+
+  set_pixel(x, y, rgb(x * 2, y * 4, 44));
+}
+#define FRAME_TIME 40
+void render_task(void)
+{
+  static uint32_t start_ms = 0;
+  static bool led_state = 0;
+
+  // Blink every interval ms
+  if (board_millis() - start_ms < FRAME_TIME)
+    return; // not enough time
+  start_ms += FRAME_TIME;
+
+  flip_buffer(true);
+  render(0);
 }

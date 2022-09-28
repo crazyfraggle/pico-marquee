@@ -9,7 +9,13 @@ add_executable(pio_hub75)
 
 pico_generate_pio_header(pio_hub75 ${CMAKE_CURRENT_LIST_DIR}/hub75.pio)
 
-target_sources(pio_hub75 PRIVATE hub75.c pixels.c webusb_main.c usb_descriptors.c)
+target_sources(pio_hub75 PRIVATE 
+	hub75.c
+ 	pixels.c
+  	demos.c
+   	demos/snek.c
+    webusb_main.c
+	usb_descriptors.c)
 
 target_compile_definitions(pio_hub75 PRIVATE
 	PICO_DEFAULT_UART_TX_PIN=28
