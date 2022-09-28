@@ -38,6 +38,19 @@ To transfer fill frames from the computer, the project has been set up to use We
 
 USB transfer seems to be limited to 64 bytes per packet? Force pushing 4k pixels = 12k bytes in such small chunks results in a transfer rate of approx 2?fps. This means pure pixel transfer is mostly viable only for still image use.
 
-*** TODO On board demos
+** On board demos
 
 We can control the board over USB to perform various tasks, such as rebooting the device into BOOTSEL mode. We can leverage this to add on board programs to render to the display too, and allow switching using the WebUSB interface.
+
+Current commands
+| Key  | Effect                                                                   |
+|------+--------------------------------------------------------------------------|
+| B    | Reset to Bootsel mode                                                    |
+| F    | Start Fire demo.                                                         |
+| S    | Start Snek game.                                                         |
+| wasd | - Direct Snek while playing                                              |
+| p    | Pause Snek                                                               |
+| n    | New Snek game if dead Snek.                                              |
+| P*   | Push a row of pixels (16 pixels max per push due to 64 byte packet limit |
+
+
