@@ -126,4 +126,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Things kept locally in case the code will be recycled
 deprecated/
+
+# Emacs temp backup
+.#*
