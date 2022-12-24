@@ -7,9 +7,12 @@
 #define WIDTH 128
 #define HEIGHT 32
 
-#define PIXEL_RED(buf, x, y) buf[((x) + (y)*WIDTH) * 3]
-#define PIXEL_GRN(buf, x, y) buf[1 + ((x) + ((y)*WIDTH)) * 3]
-#define PIXEL_BLU(buf, x, y) buf[2 + ((x) + ((y)*WIDTH)) * 3]
+#define RED(x, y) (0 + ((x) + ((y)*WIDTH)) * 3)
+#define GRN(x, y) (1 + ((x) + ((y)*WIDTH)) * 3)
+#define BLU(x, y) (2 + ((x) + ((y)*WIDTH)) * 3)
+#define PIXEL_RED(buf, x, y) buf[RED(x, y)]
+#define PIXEL_GRN(buf, x, y) buf[GRN(x, y)]
+#define PIXEL_BLU(buf, x, y) buf[BLU(x, y)]
 
 static uint32_t r_ish;
 #define rnd (r_ish = (((r_ish * 1103515245) + 12345) & 0x7fffffff))
