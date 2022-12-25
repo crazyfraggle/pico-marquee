@@ -9,6 +9,7 @@ import {
   rnd,
   set_pixel
 } from '$lib/pixels';
+import { nums_5, renderNumRightAligned, stringBitmap } from '$lib/text';
 
 // Game state
 let dir_x = 0;
@@ -53,22 +54,9 @@ const init = () => {
   }
 
   // Draw score text
-  for (let l = 0; score_text[l] != null; l++) {
-    const line = score_text[l];
-    for (let c = 0; line?.[c]; c++) {
-      if (line[c] == '#') {
-        set_pixel(102 + c, 0 + l, 0x334455);
-      }
-    }
-  }
-  for (let l = 0; high_text[l] != null; l++) {
-    const line = high_text[l];
-    for (let c = 0; line?.[c]; c++) {
-      if (line[c] == '#') {
-        set_pixel(102 + c, 16 + l, 0x554433);
-      }
-    }
-  }
+  const buf = get_render_buffer();
+  stringBitmap(buf, 102, 0, score_text, 0x334455);
+  stringBitmap(buf, 102, 16, high_text, 0x554433);
 
   game_state = GameState.INIT;
 
@@ -77,7 +65,6 @@ const init = () => {
 
 const render = (): boolean => {
   const buf = get_render_buffer();
-  // buf: Uint8Array = get_render_buffer();
 
   switch (game_state) {
     case GameState.INIT:
@@ -147,7 +134,6 @@ const keyboard = (char: string): boolean => {
 
     case 'n':
       if (game_state == GameState.GAMEOVER) {
-        console.log('asads');
         init();
       }
 
@@ -195,20 +181,7 @@ function increase_score(amount: number) {
 
 function render_highscore(buf: Uint8Array) {
   // Draw high score
-  let tmp = high;
-  let oom = 1;
-  do {
-    const num = nums[tmp % 10];
-    let startx = 127 - 5 * oom;
-    for (let l = 0; num[l] != null; l++) {
-      for (let c = 0; c < 4 && num[l]?.[c]; c++) {
-        set_pixel(startx + c, 25 + l, 0);
-        if (num[l]?.[c] == '#') set_pixel(startx + c, 25 + l, 0xffffff);
-      }
-    }
-    tmp = (tmp / 10) | 0;
-    oom++;
-  } while (tmp);
+  renderNumRightAligned(buf, 127, 25, high, 0xffffff, 1);
 }
 
 /////////////////////////////////
@@ -269,21 +242,7 @@ function state_eating(buf: Uint8Array) {
         set_pixel(x, y, 0);
 
         // Draw score
-        let tmp = score;
-        let oom = 1;
-        while (tmp) {
-          const num = nums[tmp % 10];
-          console.log(num);
-          let startx = 127 - 5 * oom;
-          for (let l = 0; num[l] != null; l++) {
-            for (let c = 0; c < 4 && num[l]?.[c]; c++) {
-              set_pixel(startx + c, 9 + l, 0);
-              if (num[l]?.[c] == '#') set_pixel(startx + c, 9 + l, 0xffffff);
-            }
-          }
-          tmp = (tmp / 10) | 0;
-          oom++;
-        }
+        renderNumRightAligned(buf, 127, 9, score, 0xffffff, 1);
 
         found = true;
       }
@@ -328,26 +287,4 @@ const high_text = [
   '#  # #    # #  #',
   '       ###',
   null
-];
-
-const nums = [
-  [' ## ', '#  #', '#  #', '#  #', ' ## ', null],
-
-  ['  ##', '   #', '   #', '   #', '   #', null],
-
-  [' ## ', '#  #', '  # ', ' #  ', '####', null],
-
-  [' ## ', '#  #', '  ##', '#  #', ' ## ', null],
-
-  ['  ##', ' # #', '####', '   #', '   #', null],
-
-  ['####', '#   ', '### ', '   #', '### ', null],
-
-  [' ## ', '#   ', '### ', '#  #', ' ## ', null],
-
-  ['####', '   #', '  # ', ' #  ', '#   ', null],
-
-  [' ## ', '#  #', ' ## ', '#  #', ' ## ', null],
-
-  [' ## ', '#  #', ' ###', '   #', ' ## ', null]
 ];
