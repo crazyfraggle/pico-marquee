@@ -32,13 +32,17 @@ const buf = [new Uint8Array(WIDTH * (HEIGHT + 1) * 3), new Uint8Array(WIDTH * (H
 let render_buffer = 0;
 
 export const rgb = (r: number, g: number, b: number) => (b << 16) | (g << 8) | r;
+
 export const set_pixel = (x: number, y: number, bgr: number) => {
   buf[render_buffer][RED(x, y)] = bgr & 0xff;
   buf[render_buffer][GRN(x, y)] = (bgr >> 8) & 0xff;
   buf[render_buffer][BLU(x, y)] = (bgr >> 16) & 0xff;
 };
+
 export const get_display_buffer = () => buf[render_buffer ^ 1];
+
 export const get_render_buffer = () => buf[render_buffer];
+
 export const flip_buffer = (copy: boolean) => {
   render_buffer ^= 1;
   if (copy) {
@@ -46,17 +50,10 @@ export const flip_buffer = (copy: boolean) => {
     buf[render_buffer] = new Uint8Array(buf[render_buffer ^ 1]);
   }
 };
+
 export const clear_buffers = () => {
   buf[0].fill(0);
   buf[1].fill(0);
 };
 
-// export interface DisplayApi {
-//     rgb: (r: number, g: number, b: number) => number;
-//     set_pixel: (x: number, y: number, p: number) => void;
-//     get_display_buffer: () => Uint8Array;
-//     get_render_buffer: () => Uint8Array;
-//     flip_buffer: (copy: boolean) => void;
-//     clear_buffers: () => void;
-//     font_print_string?: (x: number, y: number, color: number, text: string) => number;
-// }
+export const onScreen = (x: number, y: number) => x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
