@@ -16,6 +16,18 @@ Developing in a Raspberry Pi 400. Initially tried using WSL, but the hassle of U
 
 When developing using VSCode and Chromium-browser, the machine quickly get sluggish, likely due to low memory.
 
+* Set up development environment
+
+** Install toolchain
+
+The below was suggested by the co-pilot.
+#+BEGIN_SRC bash
+sudo apt install cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
+#+END_SRC
+
+*** TODO Dig up the original documentation and add proper instructions.
+
+
 * Source code layout
 
 ** LED driver
