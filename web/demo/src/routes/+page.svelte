@@ -3,9 +3,10 @@
   import { Fire } from '$lib/demos/fire';
   import { Snek } from '$lib/demos/snek';
   import { Scroller } from '$lib/demos/scroller';
+  import { Blocks } from '$lib/demos/blocks';
   import type { Demo } from '$lib/demo';
 
-  const demos = [Fire, Snek, Scroller];
+  const demos = [Fire, Snek, Scroller, Blocks];
 
   let demo: Demo | undefined = Fire;
 
