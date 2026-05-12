@@ -8,16 +8,13 @@
 
   const demos = [Fire, Snek, Scroller, Blocks];
 
-  let demo: Demo | undefined = Fire;
+  let demo: Demo | undefined = $state(Fire);
 
   function setDemo(name: string) {
     demo = demos.find((d) => d.name === name);
   }
 </script>
 
-<!-- <h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
- -->
 <Display {demo} />
 
-{#each demos as d}<button on:click={() => setDemo(d.name)}>{d.name}</button>{/each}
+{#each demos as d}<button onclick={() => setDemo(d.name)}>{d.name}</button>{/each}

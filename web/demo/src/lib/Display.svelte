@@ -3,11 +3,10 @@
   import type { Demo } from './demo';
   import { WIDTH, HEIGHT, get_display_buffer, RED, GRN, BLU, flip_buffer } from './pixels';
 
-  export let demo: Demo | undefined;
+  let { demo }: { demo: Demo | undefined } = $props();
 
   let canvas: HTMLCanvasElement;
-  let pixelSize = 8;
-  $: ((d) => d?.init())(demo);
+  $effect(() => { demo?.init(); });
 
   onMount(() => {
     let skipFrame = false;
@@ -39,6 +38,7 @@
     return () => cancelAnimationFrame(rid);
   });
   function onKeyDown(e: KeyboardEvent) {
+    e.preventDefault();
     // console.log(e);
     if (demo) {
       demo.keyboard(e.key);
@@ -48,11 +48,11 @@
 
 {#if demo}
   <h1>{demo.name}</h1>
-  <canvas bind:this={canvas} />
+  <canvas bind:this={canvas}></canvas>
 {:else}
   <h1>No demo loaded</h1>
 {/if}
-<svelte:window on:keydown|preventDefault={onKeyDown} />
+<svelte:window onkeydown={onKeyDown} />
 
 <style>
   canvas {
