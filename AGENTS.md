@@ -11,16 +11,22 @@ Firmware and tooling for a 128×32 RGB LED matrix display (two 64×32 HUB75 pane
 Requires the Pico SDK and ARM toolchain. Standard CMake out-of-source build:
 
 ```bash
-mkdir build && cd build
-cmake ..
-make
+git submodule update --init --recursive
+./build-firmware.sh
 ```
 
 Flash by copying the resulting `.uf2` to the Pico in BOOTSEL mode, or send `B` over WebUSB/CDC serial to reboot into BOOTSEL.
 
-Install the ARM toolchain (Arch/CachyOS):
+`build-firmware.sh` asks for the Pico variant and, for Pico W variants, the
+WiFi credentials. It passes credentials through the environment and removes
+the temporary CMake build directory when it exits. The credentials are still
+necessarily embedded in the resulting firmware.
+
+The repository pins the Pico SDK as the `pico-sdk` submodule. Install the ARM
+toolchain (Arch/CachyOS):
 ```bash
-sudo pacman -S cmake arm-none-eabi-gcc arm-none-eabi-newlib base-devel
+sudo pacman -S --needed base-devel cmake git python \
+  arm-none-eabi-binutils arm-none-eabi-gcc arm-none-eabi-newlib
 ```
 
 ## Web Apps

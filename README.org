@@ -22,10 +22,26 @@ When developing using VSCode and Chromium-browser, the machine quickly get slugg
 
 The below was suggested by the co-pilot.
 #+BEGIN_SRC bash
-sudo apt install cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
+sudo pacman -S --needed base-devel cmake git python \
+  arm-none-eabi-binutils arm-none-eabi-gcc arm-none-eabi-newlib
 #+END_SRC
 
-*** TODO Dig up the original documentation and add proper instructions.
+The Pico SDK is pinned in this repository as a Git submodule. Initialize it
+before configuring the firmware:
+#+BEGIN_SRC bash
+git submodule update --init --recursive
+#+END_SRC
+
+For a Pico W build, provide the WiFi credentials at configure time:
+#+BEGIN_SRC bash
+./build-firmware.sh
+#+END_SRC
+
+The script asks for the Pico variant and WiFi credentials when needed. It
+passes credentials through the environment and removes its temporary build
+directory on exit, so they are not stored in the repository, shell history, or
+a persistent CMake cache. The credentials are necessarily embedded in the
+resulting firmware image.
 
 
 * Source code layout
@@ -34,6 +50,7 @@ sudo apt install cmake gcc-arm-none-eabi libnewlib-arm-none-eabi build-essential
 
 I'm using the Picos built in Programmable IO (PIO) to drive the LEDs. 
 The pico-examples project `pio/hub75` has been very slightly adjusted for this setup.
+https://github.com/raspberrypi/pico-examples/tree/master/pio/hub75
 
 We have the option to drive the LEDs coupled in series as a single 128x32 display, or we could optimize by driving them as two 64x32 displays in parallell.
 The Pico has enough GPIO pins for either option. Sticking with the single display solution first, as it means the example code can be used directly.
@@ -65,4 +82,7 @@ Current commands
 | n    | New Snek game if dead Snek.                                              |
 | P*   | Push a row of pixels (16 pixels max per push due to 64 byte packet limit |
 
-
+* Using Micropython and PIO
+This is supposed to be possible. Some sample links:
+https://forums.raspberrypi.com/viewtopic.php?t=307605
+https://github.com/hoihu/projects/tree/master/pico

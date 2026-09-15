@@ -59,8 +59,25 @@
 
 #include "pixels.h"
 #include "demos.h"
+#include "wifi.h"
 
-#define LED_PIN PICO_DEFAULT_LED_PIN
+#ifdef PICO_CYW43_SUPPORTED
+#include "pico/cyw43_arch.h"
+#endif
+
+// On a plain Pico the status LED is a normal GPIO; on a Pico W it hangs off the
+// CYW43 chip and has no RP2040 GPIO number (PICO_DEFAULT_LED_PIN is undefined),
+// so it must be driven through the WiFi driver. led_set() hides the difference.
+static inline void led_set(bool on)
+{
+#if defined(PICO_CYW43_SUPPORTED)
+  cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, on);
+#elif defined(PICO_DEFAULT_LED_PIN)
+  gpio_put(PICO_DEFAULT_LED_PIN, on);
+#else
+  (void)on;
+#endif
+}
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
@@ -106,9 +123,14 @@ int webusb_main(void)
   board_init();
   tusb_init();
 
+  // Join WiFi and start the TCP command listener. No-op (returns false) on a
+  // plain Pico; failure to join is non-fatal -- USB still works.
+  wifi_init();
+
   while (1)
   {
     tud_task(); // tinyusb device task
+    wifi_task(); // pump lwIP; runs the TCP recv callbacks
     cdc_task();
     webserial_task();
     led_blinking_task();
@@ -269,7 +291,7 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
       // Always lit LED if connected
       if (web_serial_connected)
       {
-        gpio_put(LED_PIN, 1);
+        led_set(1);
         blink_interval_ms = BLINK_ALWAYS_ON;
 
         tud_vendor_write_str("\nTinyUSB WebUSB device example\n");
@@ -363,7 +385,7 @@ void led_blinking_task(void)
   start_ms += blink_interval_ms;
 
   // board_led_write(led_state);
-  gpio_put(LED_PIN, led_state);
+  led_set(led_state);
 
   led_state ^= 1; // toggle
 }
