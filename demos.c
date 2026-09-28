@@ -11,9 +11,11 @@
 #include "demos/snek.h"
 
 static int demo = 0;
+static uint8_t bright_mode_level = 255;
 
 // Forward declare demo renderers.
 bool render_fire();
+bool render_bright();
 bool render_text();
 void init_demo();
 void init_fire();
@@ -21,7 +23,7 @@ void init_fire();
 // Interface
 void select_demo(int num)
 {
-    if (num > 2)
+    if (num > 3)
         num = 0;
     demo = num;
     init_demo();
@@ -37,6 +39,10 @@ void init_demo()
     case 2:
         init_snek();
         break;
+    case 3:
+        clear_buffers();
+        flip_buffer(false);
+        break;
     default:
         break;
     }
@@ -50,6 +56,8 @@ bool render_demo()
         return render_fire();
     case 2:
         return render_snek();
+    case 3:
+        return render_bright();
     default:
         return false;
     }
@@ -64,6 +72,28 @@ bool demo_keyboard_handler(char c)
     default:
         return false;
     }
+}
+
+void set_bright_mode_level(uint8_t level)
+{
+    bright_mode_level = level;
+}
+
+bool render_bright()
+{
+    uint8_t *buf = get_render_buffer();
+
+    for (int y = 0; y < HEIGHT; y++)
+    {
+        for (int x = 0; x < WIDTH; x++)
+        {
+            PIXEL_RED(buf, x, y) = bright_mode_level;
+            PIXEL_GRN(buf, x, y) = bright_mode_level;
+            PIXEL_BLU(buf, x, y) = bright_mode_level;
+        }
+    }
+
+    return true;
 }
 
 // Demos

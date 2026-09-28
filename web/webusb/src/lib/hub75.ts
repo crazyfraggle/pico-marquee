@@ -90,6 +90,11 @@ export class Pico75 {
         this.device.transferOut(this.endpointOut, buf);
     }
 
+    async setBacklight(brightness = 255) {
+        const buf = new Uint8Array([0x4c, brightness & 0xff]); // "L"
+        await this.device.transferOut(this.endpointOut, buf);
+    }
+
     async sendFrame() {
         const buf = new Uint8Array(4 + 16 * 3); // 16 pixels per run
         buf[0] = 0x50;
@@ -123,4 +128,3 @@ export class Pico75 {
 /**
  * Connect to Raspberry Pi Pico Hub75 USB device
  */
-

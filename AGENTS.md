@@ -54,7 +54,7 @@ npm run lint
 
 - **`hub75.pio` / `hub75.c`** — Low-level HUB75 LED driver. The PIO program clocks out RGB888 pixel data; `core1_main()` runs on the second core continuously scanning rows from the display buffer, keeping the display refreshed without blocking the main loop.
 - **`pixels.c` / `pixels.h`** — Double-buffered framebuffer (`WIDTH=128`, `HEIGHT=32`, RGB packed as 3 bytes per pixel). One extra hidden row (row 32) exists in the allocation and is used by the fire demo as a seed row. `flip_buffer(copy)` swaps render/display buffers; pass `copy=true` if the next frame builds on the previous one.
-- **`demos.c` / `demos/snek.c`** — On-board demo dispatcher. `select_demo(n)` switches demos; `render_demo()` is called each frame from `render_task()`. Demo 0 = bouncing dot (default), 1 = fire, 2 = Snek game.
+- **`demos.c` / `demos/snek.c`** — On-board demo dispatcher. `select_demo(n)` switches demos; `render_demo()` is called each frame from `render_task()`. Demo 0 = bouncing dot (default), 1 = fire, 2 = Snek game, 3 = bright white backlight.
 - **`webusb_main.c`** — Main loop on `core0`. Handles TinyUSB device tasks, CDC serial, WebUSB vendor class, LED blink, and 25 fps render tick (`FRAME_TIME = 40ms`).
 - **`c64.h`** — C64 bitmap font data used for text rendering.
 - **`usb_descriptors.c`** — TinyUSB descriptor definitions. Vendor ID is `0xcafe`.
@@ -68,6 +68,8 @@ Single-byte commands (or multi-byte for pixel push) over WebUSB or CDC serial:
 | `B` (0x42) | Reboot to BOOTSEL |
 | `F` (0x46) | Start fire demo |
 | `S` | Start Snek game |
+| `L` | Bright white backlight at full brightness |
+| `L, brightness` | Bright white backlight with brightness `0–255` |
 | `P` (0x50) | Push pixels: `[P, x, y, n, r,g,b × n]` — writes `n` pixels (max 16) starting at (x,y) |
 | `w/a/s/d` | Snek direction |
 | `p` | Pause Snek |

@@ -5,6 +5,7 @@
 
   let pico75 = null;
   let connected = false;
+  let brightness = 255;
   $: connectBtnString = connected ? "Disconnect device" : "Connect device";
 
   async function toggleDeviceConnect(_e) {
@@ -24,6 +25,9 @@
   }
   async function testDevice(_e) {
     pico75 && (await pico75.sendFrame());
+  }
+  async function setBacklight(_e) {
+    pico75 && (await pico75.setBacklight(brightness));
   }
 </script>
 
@@ -46,6 +50,12 @@
   {/if}
   {#if connected}
     <button on:click={testDevice}>Test device</button>
+    <button on:click={setBacklight}>Bright backlight</button>
+    <label>
+      Brightness
+      <input type="range" min="0" max="255" bind:value={brightness} on:change={setBacklight} />
+      {brightness}
+    </label>
   {/if}
 
   <div class="card">

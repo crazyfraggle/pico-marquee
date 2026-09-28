@@ -189,6 +189,12 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
     echo_all("Enabling Snek Game\r\n", 21);
     break;
 
+  case 'L': // "L" - Bright backlight mode. Optional second byte is brightness.
+    set_bright_mode_level(count > 1 ? buf[1] : 255);
+    select_demo(3);
+    echo_all("Enabling Bright Mode\r\n", 22);
+    break;
+
   case 0x50: // "P" - Pixel dump. Dumps a row of pixels.
     // Format Pxyn[rgb1,...,rgbn]
     {

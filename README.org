@@ -77,6 +77,7 @@ Current commands
 | B    | Reset to Bootsel mode                                                    |
 | F    | Start Fire demo.                                                         |
 | S    | Start Snek game.                                                         |
+| L    | Bright white backlight; optionally send a second byte for brightness 0-255 |
 | wasd | - Direct Snek while playing                                              |
 | p    | Pause Snek                                                               |
 | n    | New Snek game if dead Snek.                                              |
