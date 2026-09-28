@@ -24,6 +24,5 @@ uint8_t *get_display_buffer();
 uint8_t *get_render_buffer();
 void flip_buffer(bool copy);
 void clear_buffers();
-int font_print_string(int x, int y, uint32_t color, char *string);
 
 #endif

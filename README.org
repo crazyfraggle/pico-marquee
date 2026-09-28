@@ -131,10 +131,58 @@ Current commands
 | L    | Bright white backlight; optionally send a second byte for brightness 0-255 |
 | I    | Report WiFi connection status and current IP address                     |
 | W    | Retry the WiFi connection                                                |
+| T*   | Set a line of text (binary form), kept on screen                         |
+| O*   | Draw a line of text (binary form) once into the current frame            |
+| t*   | Set a line of text (ASCII form), kept on screen                          |
+| o*   | Draw a line of text (ASCII form) once into the current frame             |
+| C    | Clear all stored text lines                                              |
 | wasd | - Direct Snek while playing                                              |
 | p    | Pause Snek                                                               |
 | n    | New Snek game if dead Snek.                                              |
 | P*   | Push a row of pixels (16 pixels max per push due to 64 byte packet limit |
+
+*** Text commands
+
+There are two interchangeable forms. The ASCII form is meant for typing into a
+serial terminal; the binary form is meant for programs.
+
+ASCII, terminated by newline:
+#+begin_example
+t<x>,<y>,<rrggbb>[,<rrggbb>]:<text>
+#+end_example
+
+The first colour is the foreground; the optional second colour paints the
+glyph background. Without it the text is drawn transparently over whatever is
+already on the panel. Only the *first* colon separates the header from the
+text, so the text itself may contain both =,= and =:=.
+
+#+begin_example
+t0,0,ff8800:HELLO WORLD
+t0,8,00ff00,000040:12:30, READY
+o40,16,ffffff:ONE FRAME
+#+end_example
+
+Binary, 11 byte header followed by the characters:
+#+begin_example
+[T|O, x, y, fg_r, fg_g, fg_b, bg_r, bg_g, bg_b, opts, n, chars * n]
+#+end_example
+
+=opts= bit 0 paints the background; all other bits are reserved. =n= is at
+most 32, keeping the whole command inside the 64 byte packet limit.
+
+=T= and =t= store the line and switch the display to text mode, which keeps up
+to 4 lines on screen and redraws them every frame. Lines are keyed by =y=:
+sending a new string at the same =y= replaces that row, and sending an empty
+string clears it. =C= clears every row.
+
+=O= and =o= instead draw once into the frame currently being built. That is
+useful for overlaying text on demo 0 (the bouncing dot), but demos that repaint
+the whole panel each frame will immediately erase it.
+
+The bundled font is a C64 character set: uppercase letters, digits and common
+punctuation only. Lowercase is folded to uppercase and unsupported characters
+become spaces. Each glyph is 8x8, so the panel fits 16 characters across and
+4 rows down.
 
 WiFi connection progress and errors are logged on the hardware UART using
 GP16 (TX), GP17 (RX), 115200 baud, 8-N-1. Commands =I= and =W= work over this

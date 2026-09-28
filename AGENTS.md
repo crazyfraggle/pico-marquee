@@ -54,7 +54,8 @@ npm run lint
 
 - **`hub75.pio` / `hub75.c`** — Low-level HUB75 LED driver. The PIO program clocks out RGB888 pixel data; `core1_main()` runs on the second core continuously scanning rows from the display buffer, keeping the display refreshed without blocking the main loop.
 - **`pixels.c` / `pixels.h`** — Double-buffered framebuffer (`WIDTH=128`, `HEIGHT=32`, RGB packed as 3 bytes per pixel). One extra hidden row (row 32) exists in the allocation and is used by the fire demo as a seed row. `flip_buffer(copy)` swaps render/display buffers; pass `copy=true` if the next frame builds on the previous one.
-- **`demos.c` / `demos/snek.c`** — On-board demo dispatcher. `select_demo(n)` switches demos; `render_demo()` is called each frame from `render_task()`. Demo 0 = bouncing dot (default), 1 = fire, 2 = Snek game, 3 = bright white backlight.
+- **`demos.c` / `demos/snek.c`** — On-board demo dispatcher. `select_demo(n)` switches demos; `render_demo()` is called each frame from `render_task()`. Demo 0 = bouncing dot (default), 1 = fire, 2 = Snek game, 3 = bright white backlight, 4 = text mode. The `DEMO_*` enum in `demos.h` names the indices.
+- **`text.c` / `text.h`** — 8×8 font rendering and text mode. Owns the `c64.h` include, maps ASCII onto the C64 charmap, keeps up to `TEXT_MAX_LINES` strings for demo 4, and parses the ASCII text command form.
 - **`webusb_main.c`** — Main loop on `core0`. Handles TinyUSB device tasks, CDC serial, WebUSB vendor class, LED blink, and 25 fps render tick (`FRAME_TIME = 40ms`).
 - **`c64.h`** — C64 bitmap font data used for text rendering.
 - **`usb_descriptors.c`** — TinyUSB descriptor definitions. Vendor ID is `0xcafe`.
@@ -72,6 +73,9 @@ Single-byte commands (or multi-byte for pixel push) over WebUSB or CDC serial:
 | `L, brightness` | Bright white backlight with brightness `0–255` |
 | `I` | Report WiFi status and current IP address |
 | `W` | Retry the WiFi connection |
+| `T` / `O` | Text, binary form: `[T, x, y, fr,fg,fb, br,bg,bb, opts, n, chars × n]` — `opts` bit 0 paints the background, `n` ≤ 32 |
+| `t` / `o` | Text, ASCII form: `t<x>,<y>,<rrggbb>[,<rrggbb>]:<text>` terminated by newline |
+| `C` | Clear all stored text lines |
 | `P` (0x50) | Push pixels: `[P, x, y, n, r,g,b × n]` — writes `n` pixels (max 16) starting at (x,y) |
 | `w/a/s/d` | Snek direction |
 | `p` | Pause Snek |
@@ -79,7 +83,12 @@ Single-byte commands (or multi-byte for pixel push) over WebUSB or CDC serial:
 
 Packets are capped at 64 bytes (USB bulk packet limit), which is why pixel push sends 16 pixels at a time.
 
+Uppercase `T`/`t` store the line and switch to text mode (demo 4), which keeps up to 4 lines and redraws them every frame. Lines are keyed by `y`, so resending at the same `y` replaces that row and an empty string clears it. Lowercase `O`/`o` draw once into the frame currently being built, which only survives under demos that do not repaint the whole panel.
+
+The ASCII form splits the header from the text at the **first** colon, so the text may contain `,` and `:`. It is reassembled byte-by-byte in `webusb_main.c` (see `line_feed()`) because the UART delivers a single byte per call — multi-byte binary commands cannot be used over the UART for that reason.
+
 ### Web / TypeScript
+
 
 - `web/webusb/src/lib/hub75.ts` — `Pico75` class wrapping the WebUSB API: `connect()`, `disconnect()`, `reboot()`, `sendFrame()`.
 - `web/demo/src/lib/pixels.ts` — Browser-side framebuffer matching the firmware layout.

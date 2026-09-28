@@ -17,6 +17,11 @@ uint32_t rgb(uint8_t r, uint8_t g, uint8_t b)
 
 void set_pixel(int x, int y, uint32_t bgr)
 {
+    // Row HEIGHT is the hidden seed row used by the fire demo, so it is a
+    // legal target even though it is never displayed.
+    if (x < 0 || x >= WIDTH || y < 0 || y > HEIGHT)
+        return;
+
     PIXEL_RED(buf[render_buffer], x, y) = bgr & 0xff;
     PIXEL_GRN(buf[render_buffer], x, y) = (bgr >> 8) & 0xff;
     PIXEL_BLU(buf[render_buffer], x, y) = (bgr >> 16) & 0xff;

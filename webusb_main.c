@@ -61,6 +61,7 @@
 
 #include "pixels.h"
 #include "demos.h"
+#include "text.h"
 #include "wifi.h"
 
 #ifdef PICO_CYW43_SUPPORTED
@@ -171,8 +172,53 @@ void echo_all(uint8_t buf[], uint32_t count)
   }
 }
 
+// ASCII text commands ("t"/"o") arrive a byte at a time over UART, so the
+// line has to be reassembled here before it can be parsed.
+static bool line_active = false;
+static bool line_persistent = false;
+static char line_buf[96];
+static size_t line_len = 0;
+
+// Consumes bytes into the pending ASCII line, stopping after the terminator.
+// Returns how many bytes were taken from b.
+static uint32_t line_feed(const uint8_t *b, uint32_t n)
+{
+  uint32_t i = 0;
+
+  while (line_active && i < n)
+  {
+    uint8_t c = b[i++];
+
+    if (c == '\r' || c == '\n')
+    {
+      line_active = false;
+      line_buf[line_len] = '\0';
+      line_len = 0;
+
+      if (text_parse_command(line_buf, line_persistent))
+        echo_all("Text set\r\n", 10);
+      else
+        echo_all("Invalid text command\r\n", 22);
+    }
+    else if (line_len < sizeof(line_buf) - 1)
+    {
+      line_buf[line_len++] = (char)c;
+    }
+  }
+
+  return i;
+}
+
 void handle_input_buffer(uint8_t buf[], uint32_t count)
 {
+  // Finish any line already in progress before treating bytes as commands.
+  uint32_t consumed = line_feed(buf, count);
+  buf += consumed;
+  count -= consumed;
+
+  if (count == 0)
+    return;
+
   if (demo_keyboard_handler(buf[0]))
   {
     echo_all("Demokey\r\n", 9);
@@ -214,6 +260,57 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
   case 'W': // "W" - Queue a fresh WiFi connection attempt.
     wifi_request_reconnect();
     echo_all("WiFi reconnect requested\r\n", 26);
+    break;
+
+  case 'T': // "T" - Binary text, stored in text mode.
+  case 'O': // "O" - Binary text, drawn once into the current frame.
+    {
+      // Format: [T|O, x, y, fr,fg,fb, br,bg,bb, opts, n, chars * n]
+      if (count < 11)
+      {
+        echo_all("Invalid text packet\r\n", 21);
+        break;
+      }
+
+      uint8_t n = buf[10];
+
+      if (n > TEXT_MAX_LEN || count < 11u + n)
+      {
+        echo_all("Invalid text packet\r\n", 21);
+        break;
+      }
+
+      char text[TEXT_MAX_LEN + 1];
+      memcpy(text, &buf[11], n);
+      text[n] = '\0';
+
+      text_apply((int8_t)buf[1], (int8_t)buf[2], text,
+                 rgb(buf[3], buf[4], buf[5]),
+                 rgb(buf[6], buf[7], buf[8]),
+                 (buf[9] & 0x01) != 0,
+                 buf[0] == 'T');
+
+      echo_all("Text set\r\n", 10);
+      break;
+    }
+
+  case 't': // "t" - ASCII text, stored in text mode.
+  case 'o': // "o" - ASCII text, drawn once into the current frame.
+    // Format: t<x>,<y>,<rrggbb>[,<rrggbb>]:<text>\n
+    line_active = true;
+    line_persistent = (buf[0] == 't');
+    line_len = 0;
+    {
+      uint32_t taken = line_feed(&buf[1], count - 1);
+      // Anything past the terminator is a separate command.
+      if (1u + taken < count)
+        handle_input_buffer(&buf[1 + taken], count - 1 - taken);
+    }
+    break;
+
+  case 'C': // "C" - Clear all stored text lines.
+    text_clear_all();
+    echo_all("Text cleared\r\n", 14);
     break;
 
   case 0x50: // "P" - Pixel dump. Dumps a row of pixels.

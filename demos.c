@@ -6,7 +6,7 @@
 
 #include "pixels.h"
 #include "demos.h"
-#include "c64.h"
+#include "text.h"
 
 #include "demos/snek.h"
 
@@ -16,15 +16,14 @@ static uint8_t bright_mode_level = 255;
 // Forward declare demo renderers.
 bool render_fire();
 bool render_bright();
-bool render_text();
 void init_demo();
 void init_fire();
 
 // Interface
 void select_demo(int num)
 {
-    if (num > 3)
-        num = 0;
+    if (num >= DEMO_COUNT || num < 0)
+        num = DEMO_DOT;
     demo = num;
     init_demo();
 }
@@ -43,6 +42,10 @@ void init_demo()
         clear_buffers();
         flip_buffer(false);
         break;
+    case 4:
+        // Keep whatever strings are already stored; render_textmode() wipes
+        // the panel each frame anyway.
+        break;
     default:
         break;
     }
@@ -58,6 +61,8 @@ bool render_demo()
         return render_snek();
     case 3:
         return render_bright();
+    case 4:
+        return render_textmode();
     default:
         return false;
     }
@@ -140,29 +145,5 @@ bool render_fire()
         PIXEL_BLU(buf, x, HEIGHT) = rnd & 0x7f;
     }
 
-    render_text();
-
     return true;
-}
-
-// Text test demo
-bool render_text()
-{
-    uint8_t *buf = get_render_buffer();
-
-    for (int chr = 0; chr < 16; chr++)
-    {
-        for (int i = 0; i < 8; i++)
-        {
-            char chr_line = c64_font2[chr * 8 + i];
-            for (int b = 0; b < 8; b++)
-            {
-                int bit = chr_line >> (7 - b) & 1;
-
-                PIXEL_RED(buf, b + chr * 8, i) = bit ? 0x04 : 0x04;
-                PIXEL_GRN(buf, b + chr * 8, i) = bit ? 0x88 : 0x00;
-                PIXEL_BLU(buf, b + chr * 8, i) = bit ? 0xff : 0xaa;
-            }
-        }
-    }
 }

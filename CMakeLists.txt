@@ -27,6 +27,7 @@ target_sources(pio_hub75 PRIVATE
  	pixels.c
   	demos.c
    	demos/snek.c
+    text.c
     webusb_main.c
 	wifi.c
 	usb_descriptors.c)
