@@ -132,3 +132,6 @@ deprecated/
 
 # Emacs temp backup
 .#*
+
+# Generated firmware
+pio_hub75.uf2
