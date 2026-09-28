@@ -184,6 +184,24 @@ punctuation only. Lowercase is folded to uppercase and unsupported characters
 become spaces. Each glyph is 8x8, so the panel fits 16 characters across and
 4 rows down.
 
+*** Setting text from the LAN
+
+On a Pico W, =tools/marquee-text.py= (Python 3, stdlib only) sends the text
+command to the TCP listener on port 4242. Use the =I= command to find the IP.
+
+#+begin_example
+tools/marquee-text.py -H 192.168.1.50 "HELLO WORLD"
+tools/marquee-text.py -H 192.168.1.50 -x 0 -y 8 -c green -b 000040 "12:30"
+tools/marquee-text.py -H 192.168.1.50 --clear "ONLY THIS LINE"
+tools/marquee-text.py -H 192.168.1.50 --clear   # blank all text
+#+end_example
+
+Set =MARQUEE_HOST= to skip =-H=. Colours take =rrggbb=, =#rrggbb= or a few
+names (=white=, =red=, =green=, =blue=, =yellow=, =cyan=, =magenta=,
+=orange=). =--once= uses the one-shot =o= form instead of text mode. Each
+command is sent on its own connection, because the firmware handles only the
+first command in each received TCP segment.
+
 WiFi connection progress and errors are logged on the hardware UART using
 GP16 (TX), GP17 (RX), 115200 baud, 8-N-1. Commands =I= and =W= work over this
 UART as well as USB CDC and WebUSB. A reconnect attempt blocks command handling

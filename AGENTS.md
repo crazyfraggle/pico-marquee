@@ -89,6 +89,7 @@ The ASCII form splits the header from the text at the **first** colon, so the te
 
 ### Web / TypeScript
 
+- `tools/marquee-text.py` — stdlib-only Python CLI that sends the ASCII text command to a Pico W over TCP port 4242. Opens one connection per command because the firmware handles only the first command in each TCP segment.
 
 - `web/webusb/src/lib/hub75.ts` — `Pico75` class wrapping the WebUSB API: `connect()`, `disconnect()`, `reboot()`, `sendFrame()`.
 - `web/demo/src/lib/pixels.ts` — Browser-side framebuffer matching the firmware layout.
