@@ -49,9 +49,11 @@
 
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
+#include "pico/stdio_uart.h"
 #include "pico/time.h"
 #include "pico/bootrom.h"
 #include "hardware/gpio.h"
+#include "hardware/uart.h"
 
 #include "bsp/board.h"
 #include "tusb.h"
@@ -114,12 +116,14 @@ static bool web_serial_connected = false;
 //------------- prototypes -------------//
 void led_blinking_task(void);
 void cdc_task(void);
+void uart_task(void);
 void webserial_task(void);
 void render_task(void);
 
 /*------------- MAIN -------------*/
 int webusb_main(void)
 {
+  stdio_uart_init();
   board_init();
   tusb_init();
 
@@ -132,6 +136,7 @@ int webusb_main(void)
     tud_task(); // tinyusb device task
     wifi_task(); // pump lwIP; runs the TCP recv callbacks
     cdc_task();
+    uart_task();
     webserial_task();
     led_blinking_task();
     render_task();
@@ -143,6 +148,9 @@ int webusb_main(void)
 // send characters to both CDC and WebUSB
 void echo_all(uint8_t buf[], uint32_t count)
 {
+  fwrite(buf, 1, count, stdout);
+  fflush(stdout);
+
   // echo to web serial
   if (web_serial_connected)
   {
@@ -195,12 +203,38 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
     echo_all("Enabling Bright Mode\r\n", 22);
     break;
 
+  case 'I': // "I" - Report WiFi status and current IP address.
+    {
+      char status[128];
+      wifi_format_status(status, sizeof(status));
+      echo_all((uint8_t *)status, strlen(status));
+      break;
+    }
+
+  case 'W': // "W" - Queue a fresh WiFi connection attempt.
+    wifi_request_reconnect();
+    echo_all("WiFi reconnect requested\r\n", 26);
+    break;
+
   case 0x50: // "P" - Pixel dump. Dumps a row of pixels.
     // Format Pxyn[rgb1,...,rgbn]
     {
+      if (count < 4)
+      {
+        echo_all("Invalid pixel packet\r\n", 22);
+        break;
+      }
+
       uint8_t x = buf[1];
       uint8_t y = buf[2];
       uint8_t n = buf[3]; // Number of pixels (3 bytes each)
+
+      if (n > 16 || x >= WIDTH || y >= HEIGHT || n > WIDTH - x ||
+          count < 4u + n * 3u)
+      {
+        echo_all("Invalid pixel packet\r\n", 22);
+        break;
+      }
 
       uint8_t *pbuf = get_render_buffer();
       uint8_t *ptarget = &PIXEL_RED(pbuf, x, y); // &pbuf[(x + y * WIDTH) * 3];
@@ -213,6 +247,17 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
     echo_all(buf, count);
     break;
   }
+}
+
+void uart_task(void)
+{
+#ifdef uart_default
+  while (uart_is_readable(uart_default))
+  {
+    uint8_t c = uart_getc(uart_default);
+    handle_input_buffer(&c, 1);
+  }
+#endif
 }
 
 //--------------------------------------------------------------------+

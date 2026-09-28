@@ -129,10 +129,17 @@ Current commands
 | F    | Start Fire demo.                                                         |
 | S    | Start Snek game.                                                         |
 | L    | Bright white backlight; optionally send a second byte for brightness 0-255 |
+| I    | Report WiFi connection status and current IP address                     |
+| W    | Retry the WiFi connection                                                |
 | wasd | - Direct Snek while playing                                              |
 | p    | Pause Snek                                                               |
 | n    | New Snek game if dead Snek.                                              |
 | P*   | Push a row of pixels (16 pixels max per push due to 64 byte packet limit |
+
+WiFi connection progress and errors are logged on the hardware UART using
+GP16 (TX), GP17 (RX), 115200 baud, 8-N-1. Commands =I= and =W= work over this
+UART as well as USB CDC and WebUSB. A reconnect attempt blocks command handling
+for up to 30 seconds while the CYW43 driver searches for the configured SSID.
 
 * Using Micropython and PIO
 This is supposed to be possible. Some sample links:

@@ -70,6 +70,8 @@ Single-byte commands (or multi-byte for pixel push) over WebUSB or CDC serial:
 | `S` | Start Snek game |
 | `L` | Bright white backlight at full brightness |
 | `L, brightness` | Bright white backlight with brightness `0–255` |
+| `I` | Report WiFi status and current IP address |
+| `W` | Retry the WiFi connection |
 | `P` (0x50) | Push pixels: `[P, x, y, n, r,g,b × n]` — writes `n` pixels (max 16) starting at (x,y) |
 | `w/a/s/d` | Snek direction |
 | `p` | Pause Snek |

@@ -32,8 +32,8 @@ target_sources(pio_hub75 PRIVATE
 	usb_descriptors.c)
 
 target_compile_definitions(pio_hub75 PRIVATE
-	PICO_DEFAULT_UART_TX_PIN=28
-	PICO_DEFAULT_UART_RX_PIN=29
+	PICO_DEFAULT_UART_TX_PIN=16
+	PICO_DEFAULT_UART_RX_PIN=17
 )
 
 # WiFi credentials and the TCP port the command listener binds to. Credentials
@@ -81,6 +81,7 @@ target_link_libraries(pio_hub75 PRIVATE
 # loop (via cyw43_arch_poll), matching the existing cooperative task model and
 # avoiding IRQ-context access to the shared framebuffer.
 if (PICO_CYW43_SUPPORTED)
+	target_compile_definitions(pio_hub75 PRIVATE PICO_CYW43_SUPPORTED=1)
 	target_link_libraries(pio_hub75 PRIVATE pico_cyw43_arch_lwip_poll)
 endif()
 
