@@ -59,6 +59,57 @@ The LED driver consists of two components, the PIO part that drive the actual IO
 
 The code for pushing the pixels runs as a separate thread on `core1` in order to avoid rendering hickups when communicating over USB. This will also allow is proper double buffering with more advanced render code on `core0`.
 
+** HUB75 wiring
+
+Connect the Pico GPIOs to the first panel's HUB75 input connector as follows.
+The physical pin ordering follows the standard HUB75/HUB75E pinout documented
+at https://olympianled.com/guides/led-hub-pinout-diagrams. Verify the connector
+orientation and pin 1 marker on the panel before wiring it.
+
+| HUB75 signal | Pico GPIO | Common 2x8 input pin |
+|--------------+-----------+----------------------|
+| R1           | GP0       | 1                    |
+| G1           | GP1       | 2                    |
+| B1           | GP2       | 3                    |
+| GND          | GND       | 4                    |
+| R2           | GP3       | 5                    |
+| G2           | GP4       | 6                    |
+| B2           | GP5       | 7                    |
+| GND          | GND       | 8                    |
+| A            | GP6       | 9                    |
+| B            | GP7       | 10                   |
+| C            | GP8       | 11                   |
+| D            | GP9       | 12                   |
+| CLK          | GP11      | 13                   |
+| LAT/STB      | GP12      | 14                   |
+| OE           | GP13      | 15                   |
+| GND          | GND       | 16                   |
+
+Logical connector view, looking at the panel input header with pin 1 in the
+usual marked corner:
+
+#+BEGIN_SRC text
+        HUB75 input
+     +----------------+
+  1  | R1   |  2  G1  |
+  3  | B1   |  4  GND |
+  5  | R2   |  6  G2  |
+  7  | B2   |  8  GND |
+  9  | A    | 10  B   |
+ 11  | C    | 12  D   |
+ 13  | CLK  | 14  LAT |
+ 15  | OE   | 16  GND |
+     +----------------+
+#+END_SRC
+
+On HUB75E panels, pin 8 is the fifth row-address signal (E) rather than GND.
+This firmware drives a 1/16-scan HUB75 panel using A-D and does not provide an
+E output.
+
+Use the panel's separate 5 V supply for the LED power and connect its ground
+to the Pico ground. Do not power the panel from the Pico. GP10 is unused by
+the HUB75 interface.
+
 ** Frame transfer
 
 To transfer fill frames from the computer, the project has been set up to use WebUSB. This will allow us to generate pixels in Javascript on the browser and push to the display.
