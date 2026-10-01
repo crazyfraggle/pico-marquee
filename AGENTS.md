@@ -29,6 +29,36 @@ sudo pacman -S --needed base-devel cmake git python \
   arm-none-eabi-binutils arm-none-eabi-gcc arm-none-eabi-newlib
 ```
 
+### Checking a build non-interactively
+
+`build-firmware.sh` prompts, so it is awkward for automated checks. To verify
+that both variants still compile, drive CMake directly — always check `pico_w`
+*and* `pico`, since a lot of code is conditional on WiFi support:
+
+```bash
+WIFI_SSID=x WIFI_PASSWORD=y cmake -S . -B /tmp/bw -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Release
+cmake --build /tmp/bw -j8
+```
+
+The build pulls picotool from source into each new build directory, so a fresh
+directory takes a few minutes. The installed CMake does not accept
+`--build --quiet`; redirect to a log and grep for `warning:|error:` instead.
+The tree is expected to build with zero warnings.
+
+### `PICO_CYW43_SUPPORTED` is not a compiler define
+
+The SDK board headers declare it with `pico_board_cmake_set(...)`, which makes
+it a **CMake variable only**. Any `#ifdef PICO_CYW43_SUPPORTED` in project
+source silently takes the false branch unless the define is added explicitly,
+which `CMakeLists.txt` now does inside the `if (PICO_CYW43_SUPPORTED)` block.
+This previously compiled all WiFi support out of the Pico W build while the
+CYW43 libraries were still being linked, so everything looked fine. To confirm
+a change really landed, check the ELF rather than trusting the build to fail:
+
+```bash
+arm-none-eabi-nm /tmp/bw/pio_hub75.elf | grep connect_wifi
+```
+
 ## Web Apps
 
 Two separate Vite/Svelte apps under `web/`:
@@ -54,13 +84,21 @@ npm run lint
 
 - **`hub75.pio` / `hub75.c`** — Low-level HUB75 LED driver. The PIO program clocks out RGB888 pixel data; `core1_main()` runs on the second core continuously scanning rows from the display buffer, keeping the display refreshed without blocking the main loop.
 - **`pixels.c` / `pixels.h`** — Double-buffered framebuffer (`WIDTH=128`, `HEIGHT=32`, RGB packed as 3 bytes per pixel). One extra hidden row (row 32) exists in the allocation and is used by the fire demo as a seed row. `flip_buffer(copy)` swaps render/display buffers; pass `copy=true` if the next frame builds on the previous one.
-- **`demos.c` / `demos/snek.c`** — On-board demo dispatcher. `select_demo(n)` switches demos; `render_demo()` is called each frame from `render_task()`. Demo 0 = bouncing dot (default), 1 = fire, 2 = Snek game, 3 = bright white backlight, 4 = text mode. The `DEMO_*` enum in `demos.h` names the indices.
+- **`demos.c` / `demos/snek.c`** — On-board demo dispatcher. `select_demo(n)` switches demos; `render_demo()` is called each frame from `render_task()`. Demo 0 = bouncing dot (default), 1 = fire, 2 = Snek game, 3 = bright white backlight, 4 = text mode. The `DEMO_*` enum in `demos.h` names the indices. Returning `true` means the demo painted the whole frame and `render()` skips the default renderer. Because `render_task()` calls `flip_buffer(true)` first, the buffer still holds the **previous** frame, so a demo that does not overwrite every pixel must clear it (as `render_textmode()` does) or it will accumulate.
 - **`text.c` / `text.h`** — 8×8 font rendering and text mode. Owns the `c64.h` include, maps ASCII onto the C64 charmap, keeps up to `TEXT_MAX_LINES` strings for demo 4, and parses the ASCII text command form.
 - **`webusb_main.c`** — Main loop on `core0`. Handles TinyUSB device tasks, CDC serial, WebUSB vendor class, LED blink, and 25 fps render tick (`FRAME_TIME = 40ms`).
-- **`c64.h`** — C64 bitmap font data used for text rendering.
+- **`c64.h`** — C64 bitmap font data used for text rendering. Both arrays are `static` in the header, so **every** translation unit that includes it gets its own copy in RAM. Only `text.c` includes it; go through `text_draw_glyph()` instead of including it again.
 - **`usb_descriptors.c`** — TinyUSB descriptor definitions. Vendor ID is `0xcafe`.
 
-### USB command protocol
+### Command protocol
+
+`handle_input_buffer()` in `webusb_main.c` is the single dispatcher for **all
+four transports**: WebUSB, USB CDC serial, the hardware UART, and the TCP
+listener on port 4242. A command added there is immediately available
+everywhere, and anything assuming a particular transport (packet sizes,
+reply paths, how much arrives per call) has to hold for all of them. Note
+that the TCP listener is unauthenticated: anything on the LAN can drive the
+display.
 
 Single-byte commands (or multi-byte for pixel push) over WebUSB or CDC serial:
 
@@ -82,6 +120,13 @@ Single-byte commands (or multi-byte for pixel push) over WebUSB or CDC serial:
 | `n` | New Snek game |
 
 Packets are capped at 64 bytes (USB bulk packet limit), which is why pixel push sends 16 pixels at a time.
+
+Any multi-byte command **must validate `count` before reading past `buf[0]`**.
+`uart_task()` calls the dispatcher with a single byte, so a partially received
+command is the normal case rather than an error, and the handler is reached
+with far less data than the format implies. This was a real out-of-bounds read
+in the `P` command. If a command needs several bytes over the UART, give it an
+ASCII line form instead.
 
 Uppercase `T`/`t` store the line and switch to text mode (demo 4), which keeps up to 4 lines and redraws them every frame. Lines are keyed by `y`, so resending at the same `y` replaces that row and an empty string clears it. Lowercase `O`/`o` draw once into the frame currently being built, which only survives under demos that do not repaint the whole panel.
 
