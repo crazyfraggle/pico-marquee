@@ -63,6 +63,7 @@
 #include "demos.h"
 #include "text.h"
 #include "clock.h"
+#include "demos/scroller.h"
 #include "wifi.h"
 
 #ifdef PICO_CYW43_SUPPORTED
@@ -173,11 +174,12 @@ void echo_all(uint8_t buf[], uint32_t count)
   }
 }
 
-// ASCII line commands ("t"/"o" text, "k" clock) arrive a byte at a time over
+// ASCII line commands ("t"/"o" text, "k" clock, "r" scroller) arrive a byte at a time over
 // UART, so the line has to be reassembled here before it can be parsed.
 static bool line_active = false;
 static char line_cmd;
-static char line_buf[96];
+// Room for the longest scroller text plus its colour header.
+static char line_buf[SCROLLER_MAX_LEN + 16];
 static size_t line_len = 0;
 
 // "k<unix seconds>[.fraction]" sets the clock to that UTC time.
@@ -226,6 +228,16 @@ static uint32_t line_feed(const uint8_t *b, uint32_t n)
 
       if (line_cmd == 'k')
         clock_parse_command(line_buf);
+      else if (line_cmd == 'r')
+      {
+        if (scroller_parse_command(line_buf))
+        {
+          select_demo(DEMO_SCROLLER);
+          echo_all("Scroller set\r\n", 14);
+        }
+        else
+          echo_all("Invalid scroller command\r\n", 26);
+      }
       else if (text_parse_command(line_buf, line_cmd == 't'))
         echo_all("Text set\r\n", 10);
       else
@@ -330,6 +342,8 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
     // Format: t<x>,<y>,<rrggbb>[,<rrggbb>]:<text>\n
   case 'k': // "k" - Set the clock to a UTC Unix time.
     // Format: k<seconds>[.fraction]\n
+  case 'r': // "r" - Set scroller colour and text, then start it.
+    // Format: r[<rrggbb>]:<text>\n
     line_active = true;
     line_cmd = (char)buf[0];
     line_len = 0;
@@ -344,6 +358,16 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
   case 'M': // "M" - Matrix rain clock.
     select_demo(DEMO_CLOCK);
     echo_all("Enabling Matrix Clock\r\n", 23);
+    break;
+
+  case 'R': // "R" - Sine scroller with the current text.
+    select_demo(DEMO_SCROLLER);
+    echo_all("Enabling Scroller\r\n", 19);
+    break;
+
+  case 'K': // "K" - Random overlapping blocks.
+    select_demo(DEMO_BLOCKS);
+    echo_all("Enabling Blocks Demo\r\n", 22);
     break;
 
   case 'C': // "C" - Clear all stored text lines.

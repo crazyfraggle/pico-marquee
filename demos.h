@@ -12,6 +12,8 @@ enum
     DEMO_BRIGHT = 3,
     DEMO_TEXT = 4,
     DEMO_CLOCK = 5,
+    DEMO_BLOCKS = 6,
+    DEMO_SCROLLER = 7,
     DEMO_COUNT
 };
 

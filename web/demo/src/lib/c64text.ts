@@ -7,7 +7,7 @@ import { eol } from './text';
  * @param chr Character tp map
  * @returns C64 charmap index
  */
-function asciiToC64(chr: string): number {
+export function asciiToC64(chr: string): number {
   if (chr >= '@' && chr <= 'Z') {
     return chr.charCodeAt(0) - '@'.charCodeAt(0);
   }
@@ -18,6 +18,9 @@ function asciiToC64(chr: string): number {
   // Outside range => space
   return 32;
 }
+
+/** One row of a glyph's bitmap; bit 7 is the leftmost pixel. */
+export const c64GlyphRow = (chr: number, line: number): number => c64_font2[chr * 8 + line] ?? 0;
 
 function render_char(buf: Uint8Array, x: number, y: number, chr: number, fg?: number, bg?: number) {
   // Default colors if not set

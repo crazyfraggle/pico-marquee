@@ -93,6 +93,16 @@ void text_draw_glyph(uint8_t *buf, int x, int y, uint8_t glyph,
     }
 }
 
+uint8_t text_glyph_row(uint8_t glyph, int line)
+{
+    if ((size_t)glyph >= TEXT_GLYPH_COUNT || line < 0 || line >= TEXT_CHAR_HEIGHT)
+    {
+        return 0;
+    }
+
+    return (uint8_t)c64_font2[glyph * TEXT_CHAR_HEIGHT + line];
+}
+
 int text_draw_string(uint8_t *buf, int x, int y, const char *s,
                      uint32_t fg, uint32_t bg, bool draw_bg)
 {
@@ -208,7 +218,7 @@ void text_apply(int x, int y, const char *s, uint32_t fg, uint32_t bg,
 }
 
 // Parse exactly six hex digits as rrggbb.
-static bool parse_hex_colour(const char *s, uint32_t *out)
+bool text_parse_hex_colour(const char *s, uint32_t *out)
 {
     uint32_t v = 0;
     int i = 0;
@@ -282,7 +292,7 @@ bool text_parse_command(const char *line, bool persistent)
     int y = atoi(fields[1]);
 
     uint32_t fg;
-    if (!parse_hex_colour(fields[2], &fg))
+    if (!text_parse_hex_colour(fields[2], &fg))
     {
         return false;
     }
@@ -291,7 +301,7 @@ bool text_parse_command(const char *line, bool persistent)
     bool draw_bg = false;
     if (field_count == 4)
     {
-        if (!parse_hex_colour(fields[3], &bg))
+        if (!text_parse_hex_colour(fields[3], &bg))
         {
             return false;
         }

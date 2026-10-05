@@ -137,6 +137,9 @@ Current commands
 | o*   | Draw a line of text (ASCII form) once into the current frame             |
 | C    | Clear all stored text lines                                              |
 | M    | Matrix rain clock                                                        |
+| K    | Random overlapping coloured blocks                                       |
+| R    | Sine scroller with the current text                                      |
+| r*   | Set scroller colour and text and start it: =r[rrggbb]:<text>=, newline terminated |
 | k*   | Set the clock: =k<unix seconds>[.fraction]=, newline terminated, UTC     |
 | wasd | - Direct Snek while playing                                              |
 | p    | Pause Snek                                                               |
@@ -209,6 +212,26 @@ WiFi connection progress and errors are logged on the hardware UART using
 GP16 (TX), GP17 (RX), 115200 baud, 8-N-1. Commands =I= and =W= work over this
 UART as well as USB CDC and WebUSB. A reconnect attempt blocks command handling
 for up to 30 seconds while the CYW43 driver searches for the configured SSID.
+
+*** Sine scroller
+
+=R= starts a C64-style sine scroller: the text enters on the right and every
+pixel column rides a rolling sine wave. =r= sets the colour and text, then
+starts it. Like =t= it is a newline-terminated ASCII line, so it works over
+the UART too:
+
+#+begin_example
+rffcc00:HELLO FROM THE C64!
+r:NEW TEXT, SAME COLOUR
+r00ff00:
+#+end_example
+
+An empty colour or text keeps the current one. The text may be up to 128
+characters and may contain =:=. =tools/marquee-text.py --scroll= sends it:
+
+#+begin_example
+tools/marquee-text.py -H 192.168.1.50 --scroll -c cyan "HELLO FROM THE C64 "
+#+end_example
 
 *** Matrix clock
 

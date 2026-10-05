@@ -24,6 +24,12 @@ uint8_t text_ascii_to_c64(char c);
 void text_draw_glyph(uint8_t *buf, int x, int y, uint8_t glyph,
                      uint32_t fg, uint32_t bg, bool draw_bg);
 
+// One row of a glyph's bitmap; bit 7 is the leftmost pixel.
+uint8_t text_glyph_row(uint8_t glyph, int line);
+
+// Parse exactly six hex digits as rrggbb into an rgb() colour.
+bool text_parse_hex_colour(const char *s, uint32_t *out);
+
 // Draw an ASCII string. Returns the x coordinate just past the last glyph.
 int text_draw_string(uint8_t *buf, int x, int y, const char *s,
                      uint32_t fg, uint32_t bg, bool draw_bg);

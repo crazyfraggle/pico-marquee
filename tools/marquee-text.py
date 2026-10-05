@@ -12,6 +12,7 @@ Examples:
     marquee-text.py -H marquee.lan --clear "ONLY THIS LINE"
     marquee-text.py -H marquee.lan --clear          # blank the display
     marquee-text.py -H marquee.lan --clock          # set time, show clock
+    marquee-text.py -H marquee.lan --scroll -c cyan "HELLO FROM THE C64 "
 """
 
 import argparse
@@ -22,6 +23,7 @@ import time
 
 DEFAULT_PORT = 4242
 MAX_LEN = 32
+SCROLL_MAX_LEN = 128
 PANEL_WIDTH = 128
 PANEL_HEIGHT = 32
 
@@ -65,7 +67,9 @@ def main():
         epilog="The font is a C64 charset: uppercase, digits and common "
         "punctuation. Lowercase is shown as uppercase.",
     )
-    parser.add_argument("text", nargs="?", help="text to show (max 32 chars)")
+    parser.add_argument(
+        "text", nargs="?", help="text to show (max 32 chars, 128 with --scroll)"
+    )
     parser.add_argument(
         "-H",
         "--host",
@@ -81,8 +85,8 @@ def main():
         "-c",
         "--color",
         type=colour,
-        default="ffffff",
-        help="foreground colour, rrggbb or name (default: white)",
+        help="foreground colour, rrggbb or name (default: white; with --scroll, "
+        "the scroller's current colour)",
     )
     parser.add_argument(
         "-b",
@@ -101,6 +105,11 @@ def main():
         help="draw into a single frame instead of keeping it in text mode",
     )
     parser.add_argument(
+        "--scroll",
+        action="store_true",
+        help="show the text in the sine scroller; without text, restart the scroller",
+    )
+    parser.add_argument(
         "--clock",
         action="store_true",
         help="set the marquee clock from this machine and show the matrix clock",
@@ -112,26 +121,30 @@ def main():
 
     if not args.host:
         parser.error("no host given; use -H or set MARQUEE_HOST")
-    if args.text is None and not args.clear and not args.clock:
-        parser.error("nothing to do; give some text, --clear and/or --clock")
+    if args.text is None and not (args.clear or args.clock or args.scroll):
+        parser.error("nothing to do; give some text, --clear, --clock or --scroll")
+    max_len = SCROLL_MAX_LEN if args.scroll else MAX_LEN
 
     if args.text is not None:
         if any(c in args.text for c in "\r\n"):
             parser.error("text must be a single line")
-        if len(args.text) > MAX_LEN:
-            parser.error(f"text is {len(args.text)} characters; the limit is {MAX_LEN}")
+        if len(args.text) > max_len:
+            parser.error(f"text is {len(args.text)} characters; the limit is {max_len}")
         try:
             args.text.encode("ascii")
         except UnicodeEncodeError:
             parser.error("text must be plain ASCII")
-        if not (-PANEL_WIDTH < args.x < PANEL_WIDTH and -PANEL_HEIGHT < args.y < PANEL_HEIGHT):
+        if not args.scroll and not (-PANEL_WIDTH < args.x < PANEL_WIDTH and -PANEL_HEIGHT < args.y < PANEL_HEIGHT):
             print("warning: position is entirely off the panel", file=sys.stderr)
 
     commands = []
     if args.clear:
         commands.append(b"C")
-    if args.text is not None:
-        header = f"{args.x},{args.y},{args.color}"
+    if args.scroll:
+        # Without text this just re-colours and restarts the current text.
+        commands.append(f"r{args.color or ''}:{args.text or ''}\n".encode("ascii"))
+    elif args.text is not None:
+        header = f"{args.x},{args.y},{args.color or 'ffffff'}"
         if args.background:
             header += f",{args.background}"
         cmd = "o" if args.once else "t"

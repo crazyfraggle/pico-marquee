@@ -10,6 +10,7 @@
 
 #include "demos/snek.h"
 #include "demos/matrix.h"
+#include "demos/scroller.h"
 
 static int demo = 0;
 static uint8_t bright_mode_level = 255;
@@ -17,8 +18,10 @@ static uint8_t bright_mode_level = 255;
 // Forward declare demo renderers.
 bool render_fire();
 bool render_bright();
+bool render_blocks();
 void init_demo();
 void init_fire();
+void init_blocks();
 
 // Interface
 void select_demo(int num)
@@ -50,6 +53,12 @@ void init_demo()
     case 5:
         init_matrix();
         break;
+    case 6:
+        init_blocks();
+        break;
+    case 7:
+        init_scroller();
+        break;
     default:
         break;
     }
@@ -69,6 +78,10 @@ bool render_demo()
         return render_textmode();
     case 5:
         return render_matrix();
+    case 6:
+        return render_blocks();
+    case 7:
+        return render_scroller();
     default:
         return false;
     }
@@ -150,6 +163,31 @@ bool render_fire()
         PIXEL_GRN(buf, x, HEIGHT) = rnd & 0x7f;
         PIXEL_BLU(buf, x, HEIGHT) = rnd & 0x7f;
     }
+
+    return true;
+}
+
+// Blocks demo
+// Draws one randomly coloured rectangle per frame on top of the previous
+// frame, so the panel fills up with overlapping blocks.
+void init_blocks()
+{
+    r_ish = time_us_32();
+    clear_buffers();
+    flip_buffer(false);
+}
+
+bool render_blocks()
+{
+    int x1 = rnd % WIDTH, y1 = rnd % HEIGHT;
+    int x2 = rnd % WIDTH, y2 = rnd % HEIGHT;
+    int min_x = x1 < x2 ? x1 : x2, max_x = x1 < x2 ? x2 : x1;
+    int min_y = y1 < y2 ? y1 : y2, max_y = y1 < y2 ? y2 : y1;
+    uint32_t color = rgb(rnd & 0xff, rnd & 0xff, rnd & 0xff);
+
+    for (int y = min_y; y < max_y; y++)
+        for (int x = min_x; x < max_x; x++)
+            set_pixel(x, y, color);
 
     return true;
 }
