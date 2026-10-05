@@ -135,3 +135,4 @@ deprecated/
 
 # Generated firmware
 pio_hub75.uf2
+graphify-out/
