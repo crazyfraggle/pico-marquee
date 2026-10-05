@@ -143,7 +143,7 @@ The ASCII form splits the header from the text at the **first** colon, so the te
 
 - `web/webusb/src/lib/hub75.ts` — `Pico75` class wrapping the WebUSB API: `connect()`, `disconnect()`, `reboot()`, `sendFrame()`.
 - `web/demo/src/lib/pixels.ts` — Browser-side framebuffer matching the firmware layout.
-- `web/demo/src/lib/demo.ts` — Browser demo logic (fire, scrollers, blocks).
+- `web/demo/src/lib/demos/` — Browser demos (fire, Snek, scroller, blocks, Matrix clock), each implementing the `Demo` interface from `web/demo/src/lib/demo.ts`. `matrix.ts` mirrors `demos/matrix.c` but uses the browser's local time.
 - `web/demo/src/lib/c64text.ts` / `text.ts` — Font rendering in TypeScript mirroring `c64.h`.
 
 ## graphify

@@ -4,9 +4,10 @@
   import { Snek } from '$lib/demos/snek';
   import { Scroller } from '$lib/demos/scroller';
   import { Blocks } from '$lib/demos/blocks';
+  import { Matrix } from '$lib/demos/matrix';
   import type { Demo } from '$lib/demo';
 
-  const demos = [Fire, Snek, Scroller, Blocks];
+  const demos = [Fire, Snek, Scroller, Blocks, Matrix];
 
   let demo: Demo | undefined = $state(Fire);
 
