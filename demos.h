@@ -11,6 +11,7 @@ enum
     DEMO_SNEK = 2,
     DEMO_BRIGHT = 3,
     DEMO_TEXT = 4,
+    DEMO_CLOCK = 5,
     DEMO_COUNT
 };
 

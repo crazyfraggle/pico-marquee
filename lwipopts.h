@@ -3,7 +3,8 @@
 
 // Minimal lwIP configuration for the pico_cyw43_arch_lwip_poll variant.
 // Based on the pico-examples common lwipopts; trimmed to what the TCP
-// command listener in wifi.c needs (TCP server, DHCP client, no app protocols).
+// command listener in wifi.c needs (TCP server, DHCP client) plus SNTP for
+// the clock demo.
 
 // We run lwIP without an RTOS (bare poll loop on core0).
 #define NO_SYS                      1
@@ -43,6 +44,13 @@
 #define LWIP_NETIF_HOSTNAME         1
 
 #define LWIP_CHKSUM_ALGORITHM       3
+
+// SNTP: resolve the server by name and hand each reply to the clock module.
+// It polls hourly (the lwIP default) and needs one extra lwIP timer.
+#include "clock.h"
+#define SNTP_SERVER_DNS             1
+#define SNTP_SET_SYSTEM_TIME_US(sec, us) clock_set_utc((sec), (us))
+#define MEMP_NUM_SYS_TIMEOUT        (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 1)
 
 // Stats / debug off for a lean release build.
 #define LWIP_STATS                  0

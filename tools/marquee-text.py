@@ -11,6 +11,7 @@ Examples:
     marquee-text.py -H marquee.lan -x 0 -y 8 -c 00ff00 -b 000040 "12:30"
     marquee-text.py -H marquee.lan --clear "ONLY THIS LINE"
     marquee-text.py -H marquee.lan --clear          # blank the display
+    marquee-text.py -H marquee.lan --clock          # set time, show clock
 """
 
 import argparse
@@ -100,14 +101,19 @@ def main():
         help="draw into a single frame instead of keeping it in text mode",
     )
     parser.add_argument(
+        "--clock",
+        action="store_true",
+        help="set the marquee clock from this machine and show the matrix clock",
+    )
+    parser.add_argument(
         "--timeout", type=float, default=5.0, help="connect timeout in seconds (default: 5)"
     )
     args = parser.parse_args()
 
     if not args.host:
         parser.error("no host given; use -H or set MARQUEE_HOST")
-    if args.text is None and not args.clear:
-        parser.error("nothing to do; give some text and/or --clear")
+    if args.text is None and not args.clear and not args.clock:
+        parser.error("nothing to do; give some text, --clear and/or --clock")
 
     if args.text is not None:
         if any(c in args.text for c in "\r\n"):
@@ -130,6 +136,11 @@ def main():
             header += f",{args.background}"
         cmd = "o" if args.once else "t"
         commands.append(f"{cmd}{header}:{args.text}\n".encode("ascii"))
+
+    if args.clock:
+        # The firmware keeps UTC and applies the time zone itself.
+        commands.append(f"k{time.time():.3f}\n".encode("ascii"))
+        commands.append(b"M")
 
     try:
         for payload in commands:

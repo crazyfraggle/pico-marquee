@@ -62,6 +62,7 @@
 #include "pixels.h"
 #include "demos.h"
 #include "text.h"
+#include "clock.h"
 #include "wifi.h"
 
 #ifdef PICO_CYW43_SUPPORTED
@@ -172,12 +173,40 @@ void echo_all(uint8_t buf[], uint32_t count)
   }
 }
 
-// ASCII text commands ("t"/"o") arrive a byte at a time over UART, so the
-// line has to be reassembled here before it can be parsed.
+// ASCII line commands ("t"/"o" text, "k" clock) arrive a byte at a time over
+// UART, so the line has to be reassembled here before it can be parsed.
 static bool line_active = false;
-static bool line_persistent = false;
+static char line_cmd;
 static char line_buf[96];
 static size_t line_len = 0;
+
+// "k<unix seconds>[.fraction]" sets the clock to that UTC time.
+static void clock_parse_command(const char *line)
+{
+  char *end;
+  unsigned long long sec = strtoull(line, &end, 10);
+  uint32_t us = 0;
+
+  if (*end == '.')
+  {
+    // Read up to six fractional digits as microseconds.
+    uint32_t scale = 100000;
+    for (end++; *end >= '0' && *end <= '9'; end++)
+    {
+      us += (uint32_t)(*end - '0') * scale;
+      scale /= 10;
+    }
+  }
+
+  if (end == line || *end != '\0' || sec > UINT32_MAX)
+  {
+    echo_all("Invalid clock command\r\n", 23);
+    return;
+  }
+
+  clock_set_utc((uint32_t)sec, us);
+  echo_all("Clock set\r\n", 11);
+}
 
 // Consumes bytes into the pending ASCII line, stopping after the terminator.
 // Returns how many bytes were taken from b.
@@ -195,7 +224,9 @@ static uint32_t line_feed(const uint8_t *b, uint32_t n)
       line_buf[line_len] = '\0';
       line_len = 0;
 
-      if (text_parse_command(line_buf, line_persistent))
+      if (line_cmd == 'k')
+        clock_parse_command(line_buf);
+      else if (text_parse_command(line_buf, line_cmd == 't'))
         echo_all("Text set\r\n", 10);
       else
         echo_all("Invalid text command\r\n", 22);
@@ -297,8 +328,10 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
   case 't': // "t" - ASCII text, stored in text mode.
   case 'o': // "o" - ASCII text, drawn once into the current frame.
     // Format: t<x>,<y>,<rrggbb>[,<rrggbb>]:<text>\n
+  case 'k': // "k" - Set the clock to a UTC Unix time.
+    // Format: k<seconds>[.fraction]\n
     line_active = true;
-    line_persistent = (buf[0] == 't');
+    line_cmd = (char)buf[0];
     line_len = 0;
     {
       uint32_t taken = line_feed(&buf[1], count - 1);
@@ -306,6 +339,11 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
       if (1u + taken < count)
         handle_input_buffer(&buf[1 + taken], count - 1 - taken);
     }
+    break;
+
+  case 'M': // "M" - Matrix rain clock.
+    select_demo(DEMO_CLOCK);
+    echo_all("Enabling Matrix Clock\r\n", 23);
     break;
 
   case 'C': // "C" - Clear all stored text lines.

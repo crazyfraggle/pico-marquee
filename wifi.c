@@ -26,6 +26,7 @@
 #include "lwip/netif.h"
 #include "lwip/tcp.h"
 #include "lwip/ip_addr.h"
+#include "lwip/apps/sntp.h"
 
 // Defined on the cmake command line (see CMakeLists.txt).
 #ifndef WIFI_SSID
@@ -33,6 +34,9 @@
 #endif
 #ifndef WIFI_PASSWORD
 #define WIFI_PASSWORD ""
+#endif
+#ifndef NTP_SERVER
+#define NTP_SERVER "pool.ntp.org"
 #endif
 #ifndef MARQUEE_TCP_PORT
 #define MARQUEE_TCP_PORT 4242
@@ -152,6 +156,21 @@ static bool start_server(void)
   return true;
 }
 
+// Start SNTP once; it keeps polling hourly and survives reconnects. The reply
+// is handed to clock_set_utc() through SNTP_SET_SYSTEM_TIME_US in lwipopts.h.
+static void start_sntp(void)
+{
+  if (sntp_enabled())
+  {
+    return;
+  }
+
+  sntp_setoperatingmode(SNTP_OPMODE_POLL);
+  sntp_setservername(0, NTP_SERVER);
+  sntp_init();
+  printf("[wifi] SNTP started (%s)\r\n", NTP_SERVER);
+}
+
 // --- public API -------------------------------------------------------------
 
 static bool connect_wifi(void)
@@ -201,6 +220,8 @@ static bool connect_wifi(void)
   }
 
   connected = true;
+  start_sntp();
+
   char status[96];
   wifi_format_status(status, sizeof(status));
   printf("[wifi] %s", status);

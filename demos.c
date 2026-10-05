@@ -9,6 +9,7 @@
 #include "text.h"
 
 #include "demos/snek.h"
+#include "demos/matrix.h"
 
 static int demo = 0;
 static uint8_t bright_mode_level = 255;
@@ -46,6 +47,9 @@ void init_demo()
         // Keep whatever strings are already stored; render_textmode() wipes
         // the panel each frame anyway.
         break;
+    case 5:
+        init_matrix();
+        break;
     default:
         break;
     }
@@ -63,6 +67,8 @@ bool render_demo()
         return render_bright();
     case 4:
         return render_textmode();
+    case 5:
+        return render_matrix();
     default:
         return false;
     }

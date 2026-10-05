@@ -136,6 +136,8 @@ Current commands
 | t*   | Set a line of text (ASCII form), kept on screen                          |
 | o*   | Draw a line of text (ASCII form) once into the current frame             |
 | C    | Clear all stored text lines                                              |
+| M    | Matrix rain clock                                                        |
+| k*   | Set the clock: =k<unix seconds>[.fraction]=, newline terminated, UTC     |
 | wasd | - Direct Snek while playing                                              |
 | p    | Pause Snek                                                               |
 | n    | New Snek game if dead Snek.                                              |
@@ -194,6 +196,7 @@ tools/marquee-text.py -H 192.168.1.50 "HELLO WORLD"
 tools/marquee-text.py -H 192.168.1.50 -x 0 -y 8 -c green -b 000040 "12:30"
 tools/marquee-text.py -H 192.168.1.50 --clear "ONLY THIS LINE"
 tools/marquee-text.py -H 192.168.1.50 --clear   # blank all text
+tools/marquee-text.py -H 192.168.1.50 --clock   # set time, show matrix clock
 #+end_example
 
 Set =MARQUEE_HOST= to skip =-H=. Colours take =rrggbb=, =#rrggbb= or a few
@@ -206,6 +209,28 @@ WiFi connection progress and errors are logged on the hardware UART using
 GP16 (TX), GP17 (RX), 115200 baud, 8-N-1. Commands =I= and =W= work over this
 UART as well as USB CDC and WebUSB. A reconnect attempt blocks command handling
 for up to 30 seconds while the CYW43 driver searches for the configured SSID.
+
+*** Matrix clock
+
+=M= shows green Matrix-style rain with the local time (HH:MM:SS, C64 font)
+slowly drifting just below the centre of the panel. Until the clock has been
+set it shows =--:--:--=.
+
+The time comes from two sources:
+
+- *SNTP* (Pico W): once WiFi is up the firmware queries =pool.ntp.org= and
+  then re-syncs every hour. Override the server with =-DNTP_SERVER=host=.
+- *The =k= command* (any board, any transport): =k1791201594.250= followed by a
+  newline sets UTC to that Unix time. =tools/marquee-text.py --clock= sends the
+  host's current time and then =M=.
+
+Between syncs the clock runs off the Pico's crystal-driven microsecond timer,
+which drifts by at most a few seconds a day.
+
+The firmware keeps UTC and converts it to local time itself: a fixed offset
+(=-DCLOCK_UTC_OFFSET_MIN=, default 60 for CET) plus one hour during EU summer
+time (last Sunday of March to last Sunday of October, at 01:00 UTC). Disable
+the summer time rule with =-DCLOCK_EU_DST=0=.
 
 * Using Micropython and PIO
 This is supposed to be possible. Some sample links:

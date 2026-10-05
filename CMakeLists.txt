@@ -27,7 +27,9 @@ target_sources(pio_hub75 PRIVATE
  	pixels.c
   	demos.c
    	demos/snek.c
+   	demos/matrix.c
     text.c
+    clock.c
     webusb_main.c
 	wifi.c
 	usb_descriptors.c)
@@ -54,6 +56,17 @@ if (NOT DEFINED WIFI_PASSWORD)
 		set(WIFI_PASSWORD "")
 	endif()
 endif()
+# Local time for the clock demo: a fixed offset from UTC in minutes, plus an
+# hour during EU summer time when CLOCK_EU_DST is on. Defaults suit Norway.
+if (NOT DEFINED CLOCK_UTC_OFFSET_MIN)
+	set(CLOCK_UTC_OFFSET_MIN 60)
+endif()
+if (NOT DEFINED CLOCK_EU_DST)
+	set(CLOCK_EU_DST 1)
+endif()
+if (NOT DEFINED NTP_SERVER)
+	set(NTP_SERVER "pool.ntp.org")
+endif()
 if (NOT DEFINED MARQUEE_TCP_PORT)
 	set(MARQUEE_TCP_PORT 4242)
 endif()
@@ -61,6 +74,9 @@ target_compile_definitions(pio_hub75 PRIVATE
 	WIFI_SSID=\"${WIFI_SSID}\"
 	WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
 	MARQUEE_TCP_PORT=${MARQUEE_TCP_PORT}
+	CLOCK_UTC_OFFSET_MIN=${CLOCK_UTC_OFFSET_MIN}
+	CLOCK_EU_DST=${CLOCK_EU_DST}
+	NTP_SERVER=\"${NTP_SERVER}\"
 )
 
 target_link_libraries(pio_hub75 PRIVATE 
@@ -83,7 +99,7 @@ target_link_libraries(pio_hub75 PRIVATE
 # avoiding IRQ-context access to the shared framebuffer.
 if (PICO_CYW43_SUPPORTED)
 	target_compile_definitions(pio_hub75 PRIVATE PICO_CYW43_SUPPORTED=1)
-	target_link_libraries(pio_hub75 PRIVATE pico_cyw43_arch_lwip_poll)
+	target_link_libraries(pio_hub75 PRIVATE pico_cyw43_arch_lwip_poll pico_lwip_sntp)
 endif()
 
 pico_add_extra_outputs(pio_hub75)
