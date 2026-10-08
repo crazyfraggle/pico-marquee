@@ -360,6 +360,11 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
     echo_all("Enabling Matrix Clock\r\n", 23);
     break;
 
+  case 'D': // "D" - Morphing digital clock.
+    select_demo(DEMO_MORPH);
+    echo_all("Enabling Morphing Clock\r\n", 25);
+    break;
+
   case 'R': // "R" - Sine scroller with the current text.
     select_demo(DEMO_SCROLLER);
     echo_all("Enabling Scroller\r\n", 19);

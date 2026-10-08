@@ -29,6 +29,7 @@ target_sources(pio_hub75 PRIVATE
    	demos/snek.c
    	demos/matrix.c
    	demos/scroller.c
+   	demos/morph.c
     text.c
     clock.c
     webusb_main.c

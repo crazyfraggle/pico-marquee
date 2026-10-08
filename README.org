@@ -137,6 +137,7 @@ Current commands
 | o*   | Draw a line of text (ASCII form) once into the current frame             |
 | C    | Clear all stored text lines                                              |
 | M    | Matrix rain clock                                                        |
+| D    | Morphing digital clock                                                   |
 | K    | Random overlapping coloured blocks                                       |
 | R    | Sine scroller with the current text                                      |
 | r*   | Set scroller colour and text and start it: =r[rrggbb]:<text>=, newline terminated |
@@ -232,6 +233,17 @@ characters and may contain =:=. =tools/marquee-text.py --scroll= sends it:
 #+begin_example
 tools/marquee-text.py -H 192.168.1.50 --scroll -c cyan "HELLO FROM THE C64 "
 #+end_example
+
+*** Morphing clock
+
+=D= shows the local time (HH:MM:SS) in large stroked digits that fill the
+panel on a black background. Each digit is drawn as four cubic Bezier
+segments, and when a digit changes its control points are blended into the
+new digit's over 750 ms. The colour drifts slowly: red, green and blue each
+swing between 20% and 70% brightness on their own period (23, 37 and 53
+seconds). Until the clock has been set it shows dashes, which morph into the
+time once it is known. The time comes from the same sources as the Matrix
+clock below.
 
 *** Matrix clock
 

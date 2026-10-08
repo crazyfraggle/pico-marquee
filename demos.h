@@ -14,6 +14,7 @@ enum
     DEMO_CLOCK = 5,
     DEMO_BLOCKS = 6,
     DEMO_SCROLLER = 7,
+    DEMO_MORPH = 8,
     DEMO_COUNT
 };
 

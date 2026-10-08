@@ -11,6 +11,7 @@
 #include "demos/snek.h"
 #include "demos/matrix.h"
 #include "demos/scroller.h"
+#include "demos/morph.h"
 
 static int demo = 0;
 static uint8_t bright_mode_level = 255;
@@ -59,6 +60,9 @@ void init_demo()
     case 7:
         init_scroller();
         break;
+    case 8:
+        init_morph();
+        break;
     default:
         break;
     }
@@ -82,6 +86,8 @@ bool render_demo()
         return render_blocks();
     case 7:
         return render_scroller();
+    case 8:
+        return render_morph();
     default:
         return false;
     }

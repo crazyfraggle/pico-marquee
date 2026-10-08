@@ -91,7 +91,7 @@ npm run lint
 
 - **`hub75.pio` / `hub75.c`** — Low-level HUB75 LED driver. The PIO program clocks out RGB888 pixel data; `core1_main()` runs on the second core continuously scanning rows from the display buffer, keeping the display refreshed without blocking the main loop.
 - **`pixels.c` / `pixels.h`** — Double-buffered framebuffer (`WIDTH=128`, `HEIGHT=32`, RGB packed as 3 bytes per pixel). One extra hidden row (row 32) exists in the allocation and is used by the fire demo as a seed row. `flip_buffer(copy)` swaps render/display buffers; pass `copy=true` if the next frame builds on the previous one.
-- **`demos.c` / `demos/snek.c`** — On-board demo dispatcher. `select_demo(n)` switches demos; `render_demo()` is called each frame from `render_task()`. Demo 0 = bouncing dot (default), 1 = fire, 2 = Snek game, 3 = bright white backlight, 4 = text mode, 5 = Matrix rain clock (`demos/matrix.c`), 6 = random blocks, 7 = sine scroller (`demos/scroller.c`). The `DEMO_*` enum in `demos.h` names the indices. Returning `true` means the demo painted the whole frame and `render()` skips the default renderer. Because `render_task()` calls `flip_buffer(true)` first, the buffer still holds the **previous** frame, so a demo that does not overwrite every pixel must clear it (as `render_textmode()` does) or it will accumulate.
+- **`demos.c` / `demos/snek.c`** — On-board demo dispatcher. `select_demo(n)` switches demos; `render_demo()` is called each frame from `render_task()`. Demo 0 = bouncing dot (default), 1 = fire, 2 = Snek game, 3 = bright white backlight, 4 = text mode, 5 = Matrix rain clock (`demos/matrix.c`), 6 = random blocks, 7 = sine scroller (`demos/scroller.c`), 8 = morphing clock (`demos/morph.c`). The `DEMO_*` enum in `demos.h` names the indices. Returning `true` means the demo painted the whole frame and `render()` skips the default renderer. Because `render_task()` calls `flip_buffer(true)` first, the buffer still holds the **previous** frame, so a demo that does not overwrite every pixel must clear it (as `render_textmode()` does) or it will accumulate.
 - **`text.c` / `text.h`** — 8×8 font rendering and text mode. Owns the `c64.h` include, maps ASCII onto the C64 charmap, keeps up to `TEXT_MAX_LINES` strings for demo 4, and parses the ASCII text command form.
 - **`clock.c` / `clock.h`** — Wall clock kept as an offset from `time_us_64()`. Set by lwIP SNTP on a Pico W (via `SNTP_SET_SYSTEM_TIME_US` in `lwipopts.h`, started from `wifi.c` once connected) or by the `k` command. Converts UTC to local time with `CLOCK_UTC_OFFSET_MIN` and the EU summer time rule (`CLOCK_EU_DST`), both CMake variables.
 - **`webusb_main.c`** — Main loop on `core0`. Handles TinyUSB device tasks, CDC serial, WebUSB vendor class, LED blink, and 25 fps render tick (`FRAME_TIME = 40ms`).
@@ -123,6 +123,7 @@ Single-byte commands (or multi-byte for pixel push) over WebUSB or CDC serial:
 | `t` / `o` | Text, ASCII form: `t<x>,<y>,<rrggbb>[,<rrggbb>]:<text>` terminated by newline |
 | `C` | Clear all stored text lines |
 | `M` | Matrix rain clock |
+| `D` | Morphing digital clock |
 | `K` | Random overlapping blocks |
 | `R` | Sine scroller with the current text |
 | `r` | Scroller, ASCII line: `r[<rrggbb>]:<text>` terminated by newline; empty colour or text keeps the current one, text ≤ 128 |
@@ -153,7 +154,7 @@ The ASCII form splits the header from the text at the **first** colon, so the te
 
 - `web/webusb/src/lib/hub75.ts` — `Pico75` class wrapping the WebUSB API: `connect()`, `disconnect()`, `reboot()`, `sendFrame()`.
 - `web/demo/src/lib/pixels.ts` — Browser-side framebuffer matching the firmware layout.
-- `web/demo/src/lib/demos/` — Browser demos (fire, Snek, scroller, blocks, Matrix clock), each implementing the `Demo` interface from `web/demo/src/lib/demo.ts`. `matrix.ts` mirrors `demos/matrix.c` but uses the browser's local time.
+- `web/demo/src/lib/demos/` — Browser demos (fire, Snek, scroller, blocks, Matrix clock, morphing clock), each implementing the `Demo` interface from `web/demo/src/lib/demo.ts`. `matrix.ts` and `morph.ts` mirror `demos/matrix.c` and `demos/morph.c` but use the browser's local time.
 - `web/demo/src/lib/c64text.ts` / `text.ts` — Font rendering in TypeScript mirroring `c64.h`.
 
 ## graphify
