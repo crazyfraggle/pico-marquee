@@ -26,6 +26,12 @@ outlines stay closed when morphing between closed glyphs. Every point settles
 to the exact final shape. Unchanged digits remain still. The Pico firmware uses
 the same timing and easing profiles, sampled into integer lookup tables.
 
+Five small fireworks play behind the digits for 5.7 seconds at the start of
+every even-numbered minute (for example, 12:02:00 or 12:04:00). The firmware
+plays the same effect only at the top of each hour. Rockets rise, burst into
+coloured sparks, then fall and fade; the clock remains in front throughout.
+Select Morph clock before the boundary to watch it; missed shows are not replayed.
+
 Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
 ```bash

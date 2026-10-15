@@ -89,6 +89,96 @@ const digits: Morph[] = [];
 const coverage = new Uint8Array(WIDTH * HEIGHT);
 const brush: Uint8Array[] = [];
 
+const FIREWORKS = 5;
+const SPARKS = 18;
+const LAUNCH_MS = 500;
+const BURST_MS = 1600;
+const FIREWORK_GAP_MS = 900;
+const FIREWORK_DURATION_MS = (FIREWORKS - 1) * FIREWORK_GAP_MS + LAUNCH_MS + BURST_MS;
+const fireworkColours = [
+  [140, 42, 18],
+  [28, 100, 150],
+  [120, 35, 135],
+  [140, 105, 20],
+  [35, 135, 70]
+];
+
+interface Firework {
+  x: number;
+  y: number;
+  colour: number[];
+  velocity: { x: number; y: number }[];
+}
+
+const fireworks: Firework[] = [];
+let fireworksStart = 0;
+let fireworksActive = false;
+let lastClockSecond = -1;
+const randomInt = (n: number) => Math.floor(Math.random() * n);
+
+const startFireworks = (now: number) => {
+  fireworksStart = now;
+  fireworksActive = true;
+  fireworks.length = 0;
+  for (let i = 0; i < FIREWORKS; i++) {
+    const x = (12 + randomInt(WIDTH - 24)) * FIX;
+    const y = (6 + randomInt(10)) * FIX;
+    const colour = fireworkColours[randomInt(fireworkColours.length)];
+    const phase = randomInt(6283) / 1000;
+    const velocity = Array.from({ length: SPARKS }, (_, j) => {
+      const angle = phase + (j * 2 * Math.PI) / SPARKS;
+      const speed = (8 + randomInt(9)) * FIX;
+      return { x: Math.trunc(Math.cos(angle) * speed), y: Math.trunc(Math.sin(angle) * speed) };
+    });
+    fireworks.push({ x, y, colour, velocity });
+  }
+};
+
+const fireworkPixel = (
+  buf: Uint8Array,
+  x: number,
+  y: number,
+  colour: number[],
+  brightness: number
+) => {
+  x = Math.floor(x / FIX);
+  y = Math.floor(y / FIX);
+  if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return;
+  for (let channel = 0; channel < 3; channel++) {
+    const index = RED(x, y) + channel;
+    buf[index] = Math.max(buf[index], Math.trunc((colour[channel] * brightness) / 255));
+  }
+};
+
+const drawFireworks = (buf: Uint8Array, now: number) => {
+  if (!fireworksActive) return;
+  const elapsed = Math.floor(now - fireworksStart);
+  if (elapsed >= FIREWORK_DURATION_MS) {
+    fireworksActive = false;
+    return;
+  }
+  fireworks.forEach((f, i) => {
+    const age = elapsed - i * FIREWORK_GAP_MS;
+    if (age < 0 || age >= LAUNCH_MS + BURST_MS) return;
+    if (age < LAUNCH_MS) {
+      const y = (HEIGHT - 1) * FIX + Math.trunc(((f.y - (HEIGHT - 1) * FIX) * age) / LAUNCH_MS);
+      fireworkPixel(buf, f.x, y, f.colour, 220);
+      fireworkPixel(buf, f.x, y + FIX, f.colour, 90);
+      return;
+    }
+    const t = age - LAUNCH_MS;
+    const brightness = Math.trunc((255 * (BURST_MS - t)) / BURST_MS);
+    for (const v of f.velocity)
+      for (let trail = 1; trail >= 0; trail--) {
+        const dt = t - trail * 70;
+        if (dt < 0) continue;
+        const x = f.x + Math.trunc((v.x * dt) / 1000);
+        const y = f.y + Math.trunc((v.y * dt) / 1000) + Math.trunc((8 * FIX * dt * dt) / 1000000);
+        fireworkPixel(buf, x, y, f.colour, Math.trunc(brightness / (trail + 1)));
+      }
+  });
+};
+
 const buildBrush = () => {
   for (let sy = 0; sy < BRUSH_SUB; sy++)
     for (let sx = 0; sx < BRUSH_SUB; sx++) {
@@ -194,6 +284,8 @@ const channelLevel = (now: number, period: number) => {
 };
 
 const init = () => {
+  fireworksActive = false;
+  lastClockSecond = -1;
   if (brush.length === 0) buildBrush();
 
   // Start on dashes; the first frame morphs straight to the time.
@@ -214,6 +306,9 @@ const render = (): boolean => {
   const h = date.getHours();
   const m = date.getMinutes();
   const s = date.getSeconds();
+  const clockSecond = h * 3600 + m * 60 + s;
+  if (m % 2 === 0 && s === 0 && clockSecond !== lastClockSecond) startFireworks(now);
+  lastClockSecond = clockSecond;
   const glyph = [
     Math.trunc(h / 10),
     h % 10,
@@ -234,12 +329,14 @@ const render = (): boolean => {
   const g = channelLevel(now, PERIOD_G_MS);
   const b = channelLevel(now, PERIOD_B_MS);
 
+  buf.fill(0);
+  drawFireworks(buf, now);
   for (let y = 0; y < HEIGHT; y++) {
     for (let x = 0; x < WIDTH; x++) {
       const c = coverage[y * WIDTH + x];
-      buf[RED(x, y)] = Math.trunc((c * r) / 255);
-      buf[GRN(x, y)] = Math.trunc((c * g) / 255);
-      buf[BLU(x, y)] = Math.trunc((c * b) / 255);
+      buf[RED(x, y)] = Math.trunc((c * r + (255 - c) * buf[RED(x, y)]) / 255);
+      buf[GRN(x, y)] = Math.trunc((c * g + (255 - c) * buf[GRN(x, y)]) / 255);
+      buf[BLU(x, y)] = Math.trunc((c * b + (255 - c) * buf[BLU(x, y)]) / 255);
     }
   }
 

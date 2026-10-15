@@ -7,11 +7,12 @@
  *
  * Paths are rasterised by stamping an anti-aliased round brush along them
  * into a coverage map, which is then tinted with a colour whose channels
- * drift independently between 20% and 70% brightness. There is no
- * background.
+ * drift independently between 20% and 70% brightness. Small fireworks play
+ * behind the digits at the top of each hour.
  *
  * Coordinates are fixed point in 1/16 pixel, so no floats are used per frame
- * apart from the three colour sines.
+ * apart from the three colour sines. Firework velocities are calculated
+ * once when the show starts; their per-frame trajectories stay integer-only.
  */
 
 #include <math.h>
@@ -139,6 +140,106 @@ static uint8_t coverage[HEIGHT][WIDTH];
 static uint8_t brush[BRUSH_SUB][BRUSH_SUB][BRUSH_SIZE][BRUSH_SIZE];
 static uint16_t easing[TRANSITION_CURVES][EASE_STEPS + 1];
 static bool brush_ready;
+
+#define FIREWORKS 5
+#define SPARKS 18
+#define LAUNCH_MS 500
+#define BURST_MS 1600
+#define FIREWORK_GAP_MS 900
+#define FIREWORK_DURATION_MS ((FIREWORKS - 1) * FIREWORK_GAP_MS + LAUNCH_MS + BURST_MS)
+
+typedef struct
+{
+    point_t centre;
+    point_t velocity[SPARKS];
+    uint8_t colour;
+} firework_t;
+
+static const uint8_t firework_colours[][3] = {
+    {140, 42, 18}, {28, 100, 150}, {120, 35, 135}, {140, 105, 20}, {35, 135, 70}};
+static firework_t fireworks[FIREWORKS];
+static uint64_t fireworks_start;
+static bool fireworks_active;
+static int last_clock_second = -1;
+
+static void start_fireworks(uint64_t now)
+{
+    fireworks_start = now;
+    fireworks_active = true;
+    for (int i = 0; i < FIREWORKS; i++)
+    {
+        firework_t *f = &fireworks[i];
+        f->centre.x = (12 + rnd % (WIDTH - 24)) * FIX;
+        f->centre.y = (6 + rnd % 10) * FIX;
+        f->colour = rnd % (sizeof(firework_colours) / sizeof(firework_colours[0]));
+        float phase = (rnd % 6283) / 1000.0f;
+        for (int j = 0; j < SPARKS; j++)
+        {
+            float angle = phase + j * 6.2831853f / SPARKS;
+            int speed = (8 + rnd % 9) * FIX;
+            f->velocity[j].x = (int16_t)(cosf(angle) * speed);
+            f->velocity[j].y = (int16_t)(sinf(angle) * speed);
+        }
+    }
+}
+
+static void firework_pixel(uint8_t *buf, int x, int y, const uint8_t *colour, int brightness)
+{
+    if (x < 0 || y < 0)
+        return;
+    x /= FIX;
+    y /= FIX;
+    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT)
+        return;
+    for (int channel = 0; channel < 3; channel++)
+    {
+        int index = RED(x, y) + channel;
+        int value = colour[channel] * brightness / 255;
+        if (value > buf[index])
+            buf[index] = (uint8_t)value;
+    }
+}
+
+static void draw_fireworks(uint8_t *buf, uint64_t now)
+{
+    if (!fireworks_active)
+        return;
+    uint64_t elapsed = (now - fireworks_start) / 1000;
+    if (elapsed >= FIREWORK_DURATION_MS)
+    {
+        fireworks_active = false;
+        return;
+    }
+    for (int i = 0; i < FIREWORKS; i++)
+    {
+        int age = (int)elapsed - i * FIREWORK_GAP_MS;
+        if (age < 0 || age >= LAUNCH_MS + BURST_MS)
+            continue;
+        const firework_t *f = &fireworks[i];
+        const uint8_t *colour = firework_colours[f->colour];
+        if (age < LAUNCH_MS)
+        {
+            int y = (HEIGHT - 1) * FIX +
+                    (f->centre.y - (HEIGHT - 1) * FIX) * age / LAUNCH_MS;
+            firework_pixel(buf, f->centre.x, y, colour, 220);
+            firework_pixel(buf, f->centre.x, y + FIX, colour, 90);
+            continue;
+        }
+        int t = age - LAUNCH_MS;
+        int brightness = 255 * (BURST_MS - t) / BURST_MS;
+        for (int j = 0; j < SPARKS; j++)
+            for (int trail = 1; trail >= 0; trail--)
+            {
+                int dt = t - trail * 70;
+                if (dt < 0)
+                    continue;
+                int x = f->centre.x + f->velocity[j].x * dt / 1000;
+                int y = f->centre.y + f->velocity[j].y * dt / 1000 +
+                        8 * FIX * dt * dt / 1000000;
+                firework_pixel(buf, x, y, colour, brightness / (trail + 1));
+            }
+    }
+}
 
 static void build_easing(void)
 {
@@ -277,6 +378,8 @@ static uint8_t channel_level(uint64_t now, uint64_t period)
 
 void init_morph(void)
 {
+    fireworks_active = false;
+    last_clock_second = -1;
     if (!brush_ready)
     {
         build_brush();
@@ -300,6 +403,10 @@ bool render_morph(void)
 
     if (clock_local_time(&h, &m, &s))
     {
+        int clock_second = h * 3600 + m * 60 + s;
+        if (m == 0 && s == 0 && clock_second != last_clock_second)
+            start_fireworks(now);
+        last_clock_second = clock_second;
         const uint8_t glyph[6] = {h / 10, h % 10, m / 10, m % 10, s / 10, s % 10};
         for (int i = 0; i < 6; i++)
             set_target(&digits[i], glyph[i], now + (5 - i) * DIGIT_STAGGER_US);
@@ -316,14 +423,16 @@ bool render_morph(void)
     uint8_t g = channel_level(now, PERIOD_G_US);
     uint8_t b = channel_level(now, PERIOD_B_US);
 
+    memset(buf, 0, WIDTH * HEIGHT * 3);
+    draw_fireworks(buf, now);
     for (int y = 0; y < HEIGHT; y++)
     {
         for (int x = 0; x < WIDTH; x++)
         {
             int c = coverage[y][x];
-            PIXEL_RED(buf, x, y) = (uint8_t)((c * r) / 255);
-            PIXEL_GRN(buf, x, y) = (uint8_t)((c * g) / 255);
-            PIXEL_BLU(buf, x, y) = (uint8_t)((c * b) / 255);
+            PIXEL_RED(buf, x, y) = (uint8_t)((c * r + (255 - c) * PIXEL_RED(buf, x, y)) / 255);
+            PIXEL_GRN(buf, x, y) = (uint8_t)((c * g + (255 - c) * PIXEL_GRN(buf, x, y)) / 255);
+            PIXEL_BLU(buf, x, y) = (uint8_t)((c * b + (255 - c) * PIXEL_BLU(buf, x, y)) / 255);
         }
     }
 

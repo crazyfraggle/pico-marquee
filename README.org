@@ -253,6 +253,13 @@ seconds). Until the clock has been set it shows dashes, which morph into the
 time once it is known. The time comes from the same sources as the Matrix
 clock below.
 
+At the top of each hour (=HH:00:00=), five small colourful rockets rise and
+burst into fading sparks behind the digits over 5.7 seconds. The clock stays
+in the foreground and continues morphing normally. The show only runs in
+morph clock mode, after the clock has been set; it does not replay missed
+hours. The web demo uses every even-numbered minute (=HH:MM:00=) instead
+of every hour for quicker testing.
+
 *** Matrix clock
 
 =M= shows green Matrix-style rain with the local time (HH:MM:SS, C64 font)
