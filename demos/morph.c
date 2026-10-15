@@ -2,7 +2,8 @@
  * Morphing clock: the local time (HH:MM:SS) in large stroked digits that
  * fill the panel. Every digit is the same shape, a path of four cubic Bezier
  * segments, so a change of digit is drawn by interpolating the control points
- * of the old and new digit over MORPH_US.
+ * of the old and new digit over MORPH_US. Changed digits start 50 ms apart
+ * from right to left, with a randomly chosen easing for each path point.
  *
  * Paths are rasterised by stamping an anti-aliased round brush along them
  * into a coverage map, which is then tinted with a colour whose channels
@@ -33,6 +34,10 @@
 #define STEPS 32
 
 #define MORPH_US 750000
+#define DIGIT_STAGGER_US 50000
+#define TRANSITION_CURVES 6
+#define EASE_STEPS 256
+#define EASE_SCALE 65535
 
 // Brush radius in pixels, plus half a pixel of anti-aliasing either side.
 #define BRUSH_RADIUS 1.5f
@@ -126,12 +131,30 @@ typedef struct
 {
     uint8_t from, to;
     uint64_t start_us;
+    uint8_t point_transitions[POINTS];
 } morph_t;
 
 static morph_t digits[6];
 static uint8_t coverage[HEIGHT][WIDTH];
 static uint8_t brush[BRUSH_SUB][BRUSH_SUB][BRUSH_SIZE][BRUSH_SIZE];
+static uint16_t easing[TRANSITION_CURVES][EASE_STEPS + 1];
 static bool brush_ready;
+
+static void build_easing(void)
+{
+    for (int i = 0; i <= EASE_STEPS; i++)
+    {
+        float t = (float)i / EASE_STEPS;
+        const float warped[3] = {t * sqrtf(t), t * t, t * t * t};
+        for (int curve = 0; curve < 3; curve++)
+        {
+            float u = warped[curve];
+            uint16_t e = (uint16_t)(u * u * (3.0f - 2.0f * u) * EASE_SCALE + 0.5f);
+            easing[curve][i] = e;
+            easing[curve + 3][EASE_STEPS - i] = EASE_SCALE - e;
+        }
+    }
+}
 
 static void build_brush(void)
 {
@@ -207,10 +230,24 @@ static void set_target(morph_t *m, uint8_t glyph, uint64_t now)
     m->from = m->to;
     m->to = glyph;
     m->start_us = now;
+    for (int i = 0; i < POINTS; i++)
+        m->point_transitions[i] = rnd % TRANSITION_CURVES;
+
+    // Keep the duplicated endpoints together when both glyphs are closed.
+    const point_t *a = glyphs[m->from], *b = glyphs[m->to];
+    if (a[0].x == a[POINTS - 1].x && a[0].y == a[POINTS - 1].y &&
+        b[0].x == b[POINTS - 1].x && b[0].y == b[POINTS - 1].y)
+        m->point_transitions[POINTS - 1] = m->point_transitions[0];
 }
 
 static void draw_digit(const morph_t *m, const point_t *pos, uint64_t now)
 {
+    // Check before subtracting: staggered start times can be in the future.
+    if (now <= m->start_us)
+    {
+        draw_path(glyphs[m->from], pos->x, pos->y);
+        return;
+    }
     uint64_t elapsed = now - m->start_us;
     if (m->from == m->to || elapsed >= MORPH_US)
     {
@@ -218,16 +255,15 @@ static void draw_digit(const morph_t *m, const point_t *pos, uint64_t now)
         return;
     }
 
-    // Smoothstep ease-in-out, with t in 0..256.
-    int t = (int)(elapsed * 256 / MORPH_US);
-    int e = t * t * (3 * 256 - 2 * t) / (256 * 256);
+    int t = (int)(elapsed * EASE_STEPS / MORPH_US);
 
     point_t path[POINTS];
     const point_t *a = glyphs[m->from], *b = glyphs[m->to];
     for (int i = 0; i < POINTS; i++)
     {
-        path[i].x = (int16_t)(a[i].x + (b[i].x - a[i].x) * e / 256);
-        path[i].y = (int16_t)(a[i].y + (b[i].y - a[i].y) * e / 256);
+        int e = easing[m->point_transitions[i]][t];
+        path[i].x = (int16_t)(a[i].x + (b[i].x - a[i].x) * e / EASE_SCALE);
+        path[i].y = (int16_t)(a[i].y + (b[i].y - a[i].y) * e / EASE_SCALE);
     }
     draw_path(path, pos->x, pos->y);
 }
@@ -242,13 +278,17 @@ static uint8_t channel_level(uint64_t now, uint64_t period)
 void init_morph(void)
 {
     if (!brush_ready)
+    {
         build_brush();
+        build_easing();
+    }
 
     // Start on dashes; the first frame morphs straight to the time if known.
     for (int i = 0; i < 6; i++)
     {
         digits[i].from = digits[i].to = GLYPH_DASH;
         digits[i].start_us = 0;
+        memset(digits[i].point_transitions, 0, sizeof(digits[i].point_transitions));
     }
 }
 
@@ -262,7 +302,7 @@ bool render_morph(void)
     {
         const uint8_t glyph[6] = {h / 10, h % 10, m / 10, m % 10, s / 10, s % 10};
         for (int i = 0; i < 6; i++)
-            set_target(&digits[i], glyph[i], now);
+            set_target(&digits[i], glyph[i], now + (5 - i) * DIGIT_STAGGER_US);
     }
 
     memset(coverage, 0, sizeof(coverage));

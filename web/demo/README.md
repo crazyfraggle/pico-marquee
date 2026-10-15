@@ -16,6 +16,16 @@ npm create svelte@latest my-app
 
 ## Developing
 
+Select **Morph clock** to preview the experimental clock animation. Changed
+digits start 50 ms apart from right to left (seconds units first, hours tens
+250 ms later). Each digit consists of four connected cubic Bezier curves.
+On every 750 ms morph, each of its 13 points randomly receives one of six
+smooth easing profiles, so parts of the outline lead or lag without oscillating.
+A point's x and y share the same easing, curve joins stay connected, and closed
+outlines stay closed when morphing between closed glyphs. Every point settles
+to the exact final shape. Unchanged digits remain still. The Pico firmware uses
+the same timing and easing profiles, sampled into integer lookup tables.
+
 Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
 ```bash

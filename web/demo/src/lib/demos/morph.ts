@@ -1,6 +1,7 @@
 // Mirrors demos/morph.c: a full-panel HH:MM:SS clock whose digits morph into
 // each other, tinted with a slowly drifting colour. The preview uses the
-// browser's local time instead of SNTP.
+// browser's local time instead of SNTP, and experiments with staggered,
+// per-point easing.
 import type { Demo } from '../demo';
 import { BLU, get_render_buffer, GRN, HEIGHT, RED, WIDTH } from '../pixels';
 
@@ -11,6 +12,19 @@ const SEGMENTS = 4;
 // Brush stamps per segment.
 const STEPS = 32;
 const MORPH_MS = 750;
+const DIGIT_STAGGER_MS = 50;
+
+type Transition = (t: number) => number;
+
+const smoothstep: Transition = (t) => t * t * (3 - 2 * t);
+const transitionCurves: Transition[] = [
+  (t) => smoothstep(t ** 1.5),
+  (t) => smoothstep(t ** 2),
+  (t) => smoothstep(t ** 3),
+  (t) => smoothstep(1 - (1 - t) ** 1.5),
+  (t) => smoothstep(1 - (1 - t) ** 2),
+  (t) => smoothstep(1 - (1 - t) ** 3)
+];
 
 // Brush radius in pixels, plus half a pixel of anti-aliasing either side.
 const BRUSH_RADIUS = 1.5;
@@ -68,6 +82,7 @@ interface Morph {
   from: number;
   to: number;
   start: number; // ms
+  pointTransitions: Transition[];
 }
 
 const digits: Morph[] = [];
@@ -134,6 +149,17 @@ const setTarget = (m: Morph, glyph: number, now: number) => {
   m.from = m.to;
   m.to = glyph;
   m.start = now;
+  const a = glyphs[m.from];
+  const b = glyphs[m.to];
+  m.pointTransitions = Array.from(
+    { length: a.length / 2 },
+    () => transitionCurves[Math.floor(Math.random() * transitionCurves.length)]
+  );
+
+  // Keep the duplicated endpoints together when both glyphs are closed.
+  const last = a.length - 2;
+  if (a[0] === a[last] && a[1] === a[last + 1] && b[0] === b[last] && b[1] === b[last + 1])
+    m.pointTransitions[last / 2] = m.pointTransitions[0];
 };
 
 const drawDigit = (m: Morph, ox: number, oy: number, now: number) => {
@@ -142,14 +168,21 @@ const drawDigit = (m: Morph, ox: number, oy: number, now: number) => {
     drawPath(glyphs[m.to], ox, oy);
     return;
   }
+  if (elapsed <= 0) {
+    drawPath(glyphs[m.from], ox, oy);
+    return;
+  }
 
-  // Smoothstep ease-in-out, with t in 0..256.
-  const t = Math.trunc((elapsed * 256) / MORPH_MS);
-  const e = Math.trunc((t * t * (3 * 256 - 2 * t)) / (256 * 256));
-
+  const t = elapsed / MORPH_MS;
   const a = glyphs[m.from];
   const b = glyphs[m.to];
-  const path = a.map((v, i) => v + Math.trunc(((b[i] - v) * e) / 256));
+  const path: Path = [];
+  // Each point's x and y share one easing; adjacent segments share their join.
+  for (let i = 0; i < a.length; i += 2) {
+    const e = m.pointTransitions[i / 2](t);
+    path.push(a[i] + Math.trunc((b[i] - a[i]) * e));
+    path.push(a[i + 1] + Math.trunc((b[i + 1] - a[i + 1]) * e));
+  }
   drawPath(path, ox, oy);
 };
 
@@ -165,7 +198,13 @@ const init = () => {
 
   // Start on dashes; the first frame morphs straight to the time.
   digits.length = 0;
-  for (let i = 0; i < 6; i++) digits.push({ from: GLYPH_DASH, to: GLYPH_DASH, start: 0 });
+  for (let i = 0; i < 6; i++)
+    digits.push({
+      from: GLYPH_DASH,
+      to: GLYPH_DASH,
+      start: 0,
+      pointTransitions: []
+    });
 };
 
 const render = (): boolean => {
@@ -183,7 +222,9 @@ const render = (): boolean => {
     Math.trunc(s / 10),
     s % 10
   ];
-  digits.forEach((d, i) => setTarget(d, glyph[i], now));
+  digits.forEach((d, i) =>
+    setTarget(d, glyph[i], now + (digits.length - 1 - i) * DIGIT_STAGGER_MS)
+  );
 
   coverage.fill(0);
   digits.forEach((d, i) => drawDigit(d, digitPos[i * 2], digitPos[i * 2 + 1], now));

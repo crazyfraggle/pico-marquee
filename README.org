@@ -239,7 +239,15 @@ tools/marquee-text.py -H 192.168.1.50 --scroll -c cyan "HELLO FROM THE C64 "
 =D= shows the local time (HH:MM:SS) in large stroked digits that fill the
 panel on a black background. Each digit is drawn as four cubic Bezier
 segments, and when a digit changes its control points are blended into the
-new digit's over 750 ms. The colour drifts slowly: red, green and blue each
+new digit's over 750 ms. Changed digits start 50 ms apart from right to left,
+with the rightmost digit starting immediately. Each of the 13 path points
+randomly picks one of six smooth easing profiles on every transition, so
+parts of the outline lead or lag without oscillating. Each point's x and y
+move together, shared curve joins stay connected, and closed outlines stay
+closed when morphing between closed glyphs. The firmware and web preview use
+the same profiles; the firmware samples them into integer lookup tables at
+initialisation to keep point interpolation integer-only.
+The colour drifts slowly: red, green and blue each
 swing between 20% and 70% brightness on their own period (23, 37 and 53
 seconds). Until the clock has been set it shows dashes, which morph into the
 time once it is known. The time comes from the same sources as the Matrix
