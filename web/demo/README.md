@@ -51,4 +51,20 @@ npm run build
 
 You can preview the production build with `npm run preview`.
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+## GitHub Pages
+
+[Try the live demos](https://crazyfraggle.github.io/pico-marquee/).
+
+The `Build and deploy web demos` workflow checks and builds pull requests, and
+publishes changes to this app on `main` to GitHub Pages. Enable **Settings > Pages >
+Build and deployment > Source > GitHub Actions** in the repository, then run the
+workflow on `main` for the initial deployment.
+
+The Pages build uses `npm run build -- --base=./` so assets resolve relative to
+the repository's Pages URL. Its `dist/` directory is the entire static site;
+no server or SvelteKit adapter is needed. To preview that build locally:
+
+```bash
+npm run build -- --base=./
+npm run preview
+```
