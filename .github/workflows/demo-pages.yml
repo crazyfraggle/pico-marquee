@@ -1,0 +1,55 @@
+name: Build and deploy web demos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - web/demo/**
+      - .github/workflows/demo-pages.yml
+  pull_request:
+    paths:
+      - web/demo/**
+      - .github/workflows/demo-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/demo/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build -- --base=./
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/demo/dist
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

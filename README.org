@@ -3,6 +3,19 @@
 
 Code for running my Raspberry Pi Pico driven 4k Led Marquee. Literal 4k display consisting of 128x32 pixels.
 
+* Live browser demos
+
+[[https://crazyfraggle.github.io/pico-marquee/][Try the demos live]] -- no Pico or LED panels required. Switch between Fire,
+Snek, the sine scroller, random blocks, Matrix clock, and Morph clock using
+the buttons below the display. The browser clocks use your local time.
+
+The =web/demo= app is built as a static site by
+[[https://github.com/crazyfraggle/pico-marquee/actions/workflows/demo-pages.yml][Build and deploy web demos]]. Pull requests build the site without publishing;
+changes to the app on =main= deploy automatically. To enable hosting once,
+open the repository's /Settings > Pages/ and select /GitHub Actions/ as the
+build source, then run the workflow on =main=. The live link becomes available
+after the first successful deployment.
+
 * Equipment
 + 2x 64x32 pixel LED matrix
   - Powered by 10A 5V PSU
