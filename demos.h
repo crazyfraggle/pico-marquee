@@ -20,6 +20,12 @@ enum
 
 bool render_demo();
 void select_demo(int);
+int get_demo(void);
+
+// Short lowercase names for the DEMO_* indices, used by the MQTT mode select.
+// demo_from_name() returns -1 for an unknown name.
+const char *demo_name(int num);
+int demo_from_name(const char *name);
 void set_bright_mode_level(uint8_t level);
 bool demo_keyboard_handler(char c);
 

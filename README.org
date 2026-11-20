@@ -129,6 +129,7 @@ Current commands
 | F    | Start Fire demo.                                                         |
 | S    | Start Snek game.                                                         |
 | L    | Bright white backlight; optionally send a second byte for brightness 0-255 |
+| G*   | Global panel brightness: second byte 0-255, also turns the panel on      |
 | I    | Report WiFi connection status and current IP address                     |
 | W    | Retry the WiFi connection                                                |
 | T*   | Set a line of text (binary form), kept on screen                         |
@@ -266,6 +267,31 @@ The firmware keeps UTC and converts it to local time itself: a fixed offset
 (=-DCLOCK_UTC_OFFSET_MIN=, default 60 for CET) plus one hour during EU summer
 time (last Sunday of March to last Sunday of October, at 01:00 UTC). Disable
 the summer time rule with =-DCLOCK_EU_DST=0=.
+
+** Home Assistant
+
+On a Pico W the firmware can join an MQTT broker (for example the Mosquitto
+add-on) and announce itself through Home Assistant's MQTT discovery. Give
+=build-firmware.sh= a broker host when it asks, or set =MQTT_HOST=,
+=MQTT_PORT= (default 1883), =MQTT_USER= and =MQTT_PASSWORD= in the
+environment when running CMake. With no host the integration is compiled out.
+Like the WiFi password, the broker password ends up inside the firmware.
+
+A *Pico Marquee* device then shows up in Home Assistant with:
+
+| Entity      | Type   | Does                                                       |
+|-------------+--------+------------------------------------------------------------|
+| Pico Marquee | light | On/off and brightness for the whole panel; the effect is the mode |
+| Mode        | select | dot, fire, snek, bright, text, matrix, blocks, scroller, morph |
+| Scroll text | text   | Sets the scroller text (max 128) and starts the scroller   |
+
+Topics live under =pico-marquee/<board id>/=: commands go to =mode/set=,
+=power/set= (=ON= / =OFF=), =brightness/set= and =text/set=, state comes
+back retained on the matching =.../state= topics, and =status= says
+=online= or =offline= (the last will). The firmware polls its own state, so
+modes changed over USB or TCP also show up in Home Assistant. When Home
+Assistant restarts and publishes =online= on =homeassistant/status=, the
+discovery configs are sent again.
 
 * Using Micropython and PIO
 This is supposed to be possible. Some sample links:
