@@ -14,4 +14,9 @@ bool render_scroller(void);
 // Returns false if malformed.
 bool scroller_parse_command(const char *line);
 
+// Current scroll text, and replace it keeping the colour. An empty string
+// keeps the current text. Returns false if the text is too long.
+const char *scroller_get_text(void);
+bool scroller_set_text(const char *s);
+
 #endif /* SCROLLER_H */

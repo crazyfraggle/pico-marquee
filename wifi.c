@@ -12,6 +12,7 @@
  */
 
 #include "wifi.h"
+#include "ha_mqtt.h"
 
 #include <stdio.h>
 
@@ -221,6 +222,7 @@ static bool connect_wifi(void)
 
   connected = true;
   start_sntp();
+  ha_mqtt_start();
 
   char status[96];
   wifi_format_status(status, sizeof(status));
@@ -258,6 +260,8 @@ void wifi_task(void)
     reconnect_requested = false;
     connect_wifi();
   }
+
+  ha_mqtt_task();
 }
 
 void wifi_request_reconnect(void)

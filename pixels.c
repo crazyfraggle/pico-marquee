@@ -9,6 +9,10 @@
 static uint8_t buf[2][(HEIGHT + 1) * WIDTH * 3];
 
 static int render_buffer = 0;
+
+volatile uint8_t display_brightness = 255;
+volatile bool display_on = true;
+
 // Create RBG 32 bit from R, G and B bytes.
 uint32_t rgb(uint8_t r, uint8_t g, uint8_t b)
 {

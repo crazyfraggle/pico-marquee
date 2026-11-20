@@ -25,4 +25,10 @@ uint8_t *get_render_buffer();
 void flip_buffer(bool copy);
 void clear_buffers();
 
+// Panel output level, applied by the HUB75 scan loop on core1 on top of the
+// framebuffer contents. Written from core0, so keep them single-byte.
+// display_on false blanks the panel while the demo keeps running.
+extern volatile uint8_t display_brightness;
+extern volatile bool display_on;
+
 #endif

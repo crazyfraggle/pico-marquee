@@ -78,8 +78,16 @@ void core1_main()
                 // Also check that previous OEn pulse is finished, else things can get out of sequence
                 hub75_wait_tx_stall(pio, sm_row);
 
-                // Latch row data, pulse output enable for new row.
-                pio_sm_put_blocking(pio, sm_row, rowsel | (100u * (1u << bit) << 5));
+                // Latch row data, pulse output enable for new row. The pulse
+                // width scales with the global brightness. The row program
+                // lights the panel for width + 1 cycles, so a blank panel
+                // skips the pulse entirely instead of sending 0.
+                uint32_t level = display_on ? display_brightness : 0;
+                if (level > 0)
+                {
+                    uint32_t width = (100u * (1u << bit) * level) / 255u;
+                    pio_sm_put_blocking(pio, sm_row, rowsel | (width << 5));
+                }
             }
         }
     }

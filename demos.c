@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "pico/stdlib.h"
 #include "pico/time.h"
 
@@ -24,7 +25,39 @@ void init_demo();
 void init_fire();
 void init_blocks();
 
+static const char *const demo_names[DEMO_COUNT] = {
+    [DEMO_DOT] = "dot",
+    [DEMO_FIRE] = "fire",
+    [DEMO_SNEK] = "snek",
+    [DEMO_BRIGHT] = "bright",
+    [DEMO_TEXT] = "text",
+    [DEMO_CLOCK] = "matrix",
+    [DEMO_BLOCKS] = "blocks",
+    [DEMO_SCROLLER] = "scroller",
+    [DEMO_MORPH] = "morph",
+};
+
 // Interface
+int get_demo(void)
+{
+    return demo;
+}
+
+const char *demo_name(int num)
+{
+    if (num < 0 || num >= DEMO_COUNT)
+        return "";
+    return demo_names[num];
+}
+
+int demo_from_name(const char *name)
+{
+    for (int i = 0; i < DEMO_COUNT; i++)
+        if (strcmp(name, demo_names[i]) == 0)
+            return i;
+    return -1;
+}
+
 void select_demo(int num)
 {
     if (num >= DEMO_COUNT || num < 0)
