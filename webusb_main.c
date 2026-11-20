@@ -130,6 +130,8 @@ int webusb_main(void)
   board_init();
   tusb_init();
 
+  select_demo(DEMO_CLOCK);
+
   // Join WiFi and start the TCP command listener. No-op (returns false) on a
   // plain Pico; failure to join is non-fatal -- USB still works.
   wifi_init();
