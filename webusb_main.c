@@ -294,6 +294,17 @@ void handle_input_buffer(uint8_t buf[], uint32_t count)
     echo_all("Enabling Bright Mode\r\n", 22);
     break;
 
+  case 'G': // "G" - Global panel brightness, second byte 0-255. Turns it on.
+    if (count < 2)
+    {
+      echo_all("Invalid brightness command\r\n", 28);
+      break;
+    }
+    display_brightness = buf[1];
+    display_on = true;
+    echo_all("Brightness set\r\n", 16);
+    break;
+
   case 'I': // "I" - Report WiFi status and current IP address.
     {
       char status[128];

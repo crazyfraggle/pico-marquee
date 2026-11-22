@@ -4,7 +4,7 @@
 // Minimal lwIP configuration for the pico_cyw43_arch_lwip_poll variant.
 // Based on the pico-examples common lwipopts; trimmed to what the TCP
 // command listener in wifi.c needs (TCP server, DHCP client) plus SNTP for
-// the clock demo.
+// the clock demo and the MQTT client for Home Assistant.
 
 // We run lwIP without an RTOS (bare poll loop on core0).
 #define NO_SYS                      1
@@ -14,7 +14,7 @@
 // Memory: lwIP manages its own pools rather than the C heap.
 #define MEM_LIBC_MALLOC             0
 #define MEM_ALIGNMENT               4
-#define MEM_SIZE                    4000
+#define MEM_SIZE                    8000
 #define MEMP_NUM_TCP_SEG            32
 #define MEMP_NUM_ARP_QUEUE          10
 #define PBUF_POOL_SIZE              24
@@ -50,7 +50,14 @@
 #include "clock.h"
 #define SNTP_SERVER_DNS             1
 #define SNTP_SET_SYSTEM_TIME_US(sec, us) clock_set_utc((sec), (us))
-#define MEMP_NUM_SYS_TIMEOUT        (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 1)
+// MQTT (Home Assistant integration, ha_mqtt.c): the client is allocated from
+// the lwIP heap (MEM_SIZE), discovery configs need a bigger output buffer
+// than the 256-byte default, and the client's cyclic timer takes one more
+// timeout on top of SNTP's.
+#define MQTT_OUTPUT_RINGBUF_SIZE    1024
+#define MQTT_VAR_HEADER_BUFFER_LEN  160
+#define MQTT_REQ_MAX_IN_FLIGHT      8
+#define MEMP_NUM_SYS_TIMEOUT        (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 2)
 
 // Stats / debug off for a lean release build.
 #define LWIP_STATS                  0

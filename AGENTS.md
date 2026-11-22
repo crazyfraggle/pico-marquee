@@ -45,6 +45,11 @@ directory takes a few minutes. The installed CMake does not accept
 `--build --quiet`; redirect to a log and grep for `warning:|error:` instead.
 The tree is expected to build with zero warnings.
 
+The MQTT integration is compiled only when `MQTT_HOST` is set (alongside
+`MQTT_PORT`, `MQTT_USER`, `MQTT_PASSWORD`, all read from the environment and
+not cached, like the WiFi variables). Also check a `pico_w` build with it set;
+`arm-none-eabi-nm ... | grep mqtt_client_connect` confirms it landed.
+
 `WIFI_SSID`/`WIFI_PASSWORD` are read from the environment and deliberately not
 cached, so any later `cmake --build` that re-runs configuration (for example
 after `CMakeLists.txt` changes) without them set rebuilds with an empty SSID.
@@ -94,6 +99,7 @@ npm run lint
 - **`demos.c` / `demos/snek.c`** — On-board demo dispatcher. `select_demo(n)` switches demos; `render_demo()` is called each frame from `render_task()`. Demo 0 = bouncing dot (default), 1 = fire, 2 = Snek game, 3 = bright white backlight, 4 = text mode, 5 = Matrix rain clock (`demos/matrix.c`), 6 = random blocks, 7 = sine scroller (`demos/scroller.c`), 8 = morphing clock (`demos/morph.c`). The `DEMO_*` enum in `demos.h` names the indices. Returning `true` means the demo painted the whole frame and `render()` skips the default renderer. Because `render_task()` calls `flip_buffer(true)` first, the buffer still holds the **previous** frame, so a demo that does not overwrite every pixel must clear it (as `render_textmode()` does) or it will accumulate.
 - **`text.c` / `text.h`** — 8×8 font rendering and text mode. Owns the `c64.h` include, maps ASCII onto the C64 charmap, keeps up to `TEXT_MAX_LINES` strings for demo 4, and parses the ASCII text command form.
 - **`clock.c` / `clock.h`** — Wall clock kept as an offset from `time_us_64()`. Set by lwIP SNTP on a Pico W (via `SNTP_SET_SYSTEM_TIME_US` in `lwipopts.h`, started from `wifi.c` once connected) or by the `k` command. Converts UTC to local time with `CLOCK_UTC_OFFSET_MIN` and the EU summer time rule (`CLOCK_EU_DST`), both CMake variables.
+- **`ha_mqtt.c` / `ha_mqtt.h`** — Home Assistant integration: lwIP MQTT client plus HA discovery for a light (power, brightness, mode as effect), a mode select and a scroller text entity, under `pico-marquee/<board id>/`. Started from `connect_wifi()` and driven from `wifi_task()`. Compiled to stubs unless the board has CYW43 **and** `MQTT_HOST` is set (which defines `MARQUEE_MQTT`). It publishes state by polling `get_demo()`, `display_on`, `display_brightness` and `scroller_get_text()` each tick, so it needs no hooks in the command dispatcher. Discovery configs go out one per tick as output-buffer space allows (`MQTT_OUTPUT_RINGBUF_SIZE` in `lwipopts.h`); grow that buffer when a config gets bigger. The demo names come from `demo_name()` in `demos.c`, so add one there for every new demo.
 - **`webusb_main.c`** — Main loop on `core0`. Handles TinyUSB device tasks, CDC serial, WebUSB vendor class, LED blink, and 25 fps render tick (`FRAME_TIME = 40ms`).
 - **`c64.h`** — C64 bitmap font data used for text rendering. Both arrays are `static` in the header, so **every** translation unit that includes it gets its own copy in RAM. Only `text.c` includes it; go through `text_draw_glyph()` instead of including it again.
 - **`usb_descriptors.c`** — TinyUSB descriptor definitions. Vendor ID is `0xcafe`.
@@ -117,6 +123,7 @@ Single-byte commands (or multi-byte for pixel push) over WebUSB or CDC serial:
 | `S` | Start Snek game |
 | `L` | Bright white backlight at full brightness |
 | `L, brightness` | Bright white backlight with brightness `0–255` |
+| `G, brightness` | Global panel brightness `0–255` (scales the OE pulse in `hub75.c`), also turns the panel on |
 | `I` | Report WiFi status and current IP address |
 | `W` | Retry the WiFi connection |
 | `T` / `O` | Text, binary form: `[T, x, y, fr,fg,fb, br,bg,bb, opts, n, chars × n]` — `opts` bit 0 paints the background, `n` ≤ 32 |

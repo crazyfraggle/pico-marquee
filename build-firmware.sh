@@ -23,20 +23,32 @@ if (( wifi )); then
   read -r -p "WiFi SSID: " wifi_ssid
   read -r -s -p "WiFi password: " wifi_password
   printf '\n'
-else
-  wifi_ssid=''
-  wifi_password=''
+  read -r -p "MQTT broker for Home Assistant (blank to disable): " mqtt_host
+  if [[ -n "$mqtt_host" ]]; then
+    read -r -p "MQTT port [1883]: " mqtt_port
+    read -r -p "MQTT user: " mqtt_user
+    read -r -s -p "MQTT password: " mqtt_password
+    printf '\n'
+  fi
 fi
+wifi_ssid="${wifi_ssid:-}"
+wifi_password="${wifi_password:-}"
+mqtt_host="${mqtt_host:-}"
+mqtt_port="${mqtt_port:-1883}"
+mqtt_user="${mqtt_user:-}"
+mqtt_password="${mqtt_password:-}"
 
 build_dir="$(mktemp -d "${TMPDIR:-/tmp}/pico-marquee-build.XXXXXX")"
 cleanup() {
-  unset wifi_ssid wifi_password
+  unset wifi_ssid wifi_password mqtt_user mqtt_password
   rm -rf -- "$build_dir"
 }
 trap cleanup EXIT
 
 echo "Building $variant..."
 WIFI_SSID="$wifi_ssid" WIFI_PASSWORD="$wifi_password" \
+  MQTT_HOST="$mqtt_host" MQTT_PORT="$mqtt_port" \
+  MQTT_USER="$mqtt_user" MQTT_PASSWORD="$mqtt_password" \
   cmake -S "$repo_dir" -B "$build_dir" -DPICO_BOARD="$variant"
 cmake --build "$build_dir" -j"$(nproc)"
 

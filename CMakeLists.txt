@@ -34,6 +34,7 @@ target_sources(pio_hub75 PRIVATE
     clock.c
     webusb_main.c
 	wifi.c
+	ha_mqtt.c
 	usb_descriptors.c)
 
 target_compile_definitions(pio_hub75 PRIVATE
@@ -72,6 +73,35 @@ endif()
 if (NOT DEFINED MARQUEE_TCP_PORT)
 	set(MARQUEE_TCP_PORT 4242)
 endif()
+# Home Assistant MQTT broker. Leaving MQTT_HOST empty compiles the
+# integration out. Read from the environment like the WiFi credentials and
+# never cached, so the password stays out of CMakeCache.txt.
+foreach(var MQTT_HOST MQTT_USER MQTT_PASSWORD)
+	if (NOT DEFINED ${var})
+		if (DEFINED ENV{${var}})
+			set(${var} "$ENV{${var}}")
+		else()
+			set(${var} "")
+		endif()
+	endif()
+endforeach()
+if (NOT DEFINED MQTT_PORT)
+	if (DEFINED ENV{MQTT_PORT})
+		set(MQTT_PORT "$ENV{MQTT_PORT}")
+	else()
+		set(MQTT_PORT 1883)
+	endif()
+endif()
+if (NOT MQTT_HOST STREQUAL "")
+	target_compile_definitions(pio_hub75 PRIVATE
+		MARQUEE_MQTT=1
+		MQTT_HOST=\"${MQTT_HOST}\"
+		MQTT_PORT=${MQTT_PORT}
+		MQTT_USER=\"${MQTT_USER}\"
+		MQTT_PASSWORD=\"${MQTT_PASSWORD}\"
+	)
+endif()
+
 target_compile_definitions(pio_hub75 PRIVATE
 	WIFI_SSID=\"${WIFI_SSID}\"
 	WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
@@ -101,7 +131,7 @@ target_link_libraries(pio_hub75 PRIVATE
 # avoiding IRQ-context access to the shared framebuffer.
 if (PICO_CYW43_SUPPORTED)
 	target_compile_definitions(pio_hub75 PRIVATE PICO_CYW43_SUPPORTED=1)
-	target_link_libraries(pio_hub75 PRIVATE pico_cyw43_arch_lwip_poll pico_lwip_sntp)
+	target_link_libraries(pio_hub75 PRIVATE pico_cyw43_arch_lwip_poll pico_lwip_sntp pico_lwip_mqtt pico_unique_id)
 endif()
 
 pico_add_extra_outputs(pio_hub75)

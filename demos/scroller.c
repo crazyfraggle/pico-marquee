@@ -114,3 +114,21 @@ bool scroller_parse_command(const char *line)
     }
     return true;
 }
+
+const char *scroller_get_text(void)
+{
+    return text;
+}
+
+bool scroller_set_text(const char *s)
+{
+    if (strlen(s) > SCROLLER_MAX_LEN)
+    {
+        return false;
+    }
+    if (s[0] != '\0')
+    {
+        strcpy(text, s);
+    }
+    return true;
+}
